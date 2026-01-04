@@ -1,0 +1,26 @@
+/* storytime-layer scrolly defaults (ported from partner-stories) */
+
+/* MOBILE STEP HEIGHT
+ * Purpose: minimum height for each `.step` so every scene has enough scroll runway.
+ * Prefer `svh` for stability; fall back for older browsers.
+ */
+html:root { --mobile-step-height: 150svh; }
+@supports (-webkit-touch-callout: none) {
+  html:root { --mobile-step-height: -webkit-fill-available; }
+}
+@supports not (height: 100svh) {
+  html:root { --mobile-step-height: 150vh; }
+}
+
+/* On mobile we want visuals clickable outside cards while cards remain interactive */
+@media (max-width: 1023.98px) {
+  .step { pointer-events: none; }
+  .step [data-article-card] { pointer-events: auto; }
+}
+
+/* Ensure steps have scroll runway even if Tailwind scanning misses arbitrary utilities */
+.step { min-height: var(--mobile-step-height); }
+@media (min-width: 1024px) {
+  .step { min-height: 100vh; }
+}
+
