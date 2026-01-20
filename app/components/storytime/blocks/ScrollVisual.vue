@@ -1,5 +1,5 @@
 <template>
-  <figure class="sticky top-0 w-full md:w-3/5 h-screen overflow-hidden flex items-center justify-center">
+  <figure class="sticky top-0 w-full h-screen overflow-hidden flex items-center justify-center">
     <Transition name="fade" mode="out-in" appear @after-enter="() => emit('ready', sceneKey)">
       <div class="w-full h-full relative">
         <div class="absolute inset-0 z-0 items-center justify-center pointer-events-auto">

@@ -78,7 +78,7 @@ watch(activeStep, () => {
     <section
       id="scrolly"
       ref="scrollyRootRef"
-      class="flex md:flex-row flex-col"
+      class="flex lg:flex-row flex-col"
     >
       <ScrollVisual
         :scene-key="activeScene.key"
