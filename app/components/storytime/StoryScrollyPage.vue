@@ -78,12 +78,12 @@ watch(activeStep, () => {
     <section
       id="scrolly"
       ref="scrollyRootRef"
-      class="flex lg:flex-row flex-col"
+      class="flex md:flex-row flex-col w-full min-w-0 md:overflow-x-hidden"
     >
       <ScrollVisual
         :scene-key="activeScene.key"
-        class="w-full shrink-0"
-        :class="isFullLayout ? 'lg:w-full lg:z-20' : 'lg:w-3/5'"
+        class="shrink-0 min-w-0"
+        :class="isFullLayout ? 'w-full md:z-20' : 'w-full md:w-[60%]'"
         @ready="onVisualReady"
       >
         <slot name="visual" :scene="activeScene" :step="flatSteps[activeStep]?.localStep ?? 0" :visualRefs="visualRefs" />
@@ -91,33 +91,32 @@ watch(activeStep, () => {
 
       <article
         ref="stepsRootRef"
-        class="w-full lg:w-2/5 mx-auto px-6 lg:px-16 transition-opacity duration-500 pointer-events-none md:pointer-events-auto"
+        class="w-full md:w-[40%] min-w-0 mx-auto md:mx-0 px-6 md:px-10 lg:px-16 transition-opacity duration-500 pointer-events-none md:pointer-events-auto md:border-l md:border-gray-200 dark:md:border-gray-800"
         :class="[
           { 'opacity-0': !stepsReady, 'opacity-100': stepsReady },
           isFullLayout
-            ? 'lg:hidden'
+            ? 'md:hidden'
             : 'pointer-events-none md:pointer-events-auto z-10 lg:z-10',
         ]"
       >
-        <div
+        <ArticleStep
           v-for="(step, i) in flatSteps"
           :key="i"
           class="step flex items-start lg:items-center z-50"
           :data-scene-key="props.scenes[step.sceneIdx]?.key"
+          :align="step.article.align || 'left'"
         >
-          <ArticleStep :align="step.article.align || 'left'">
-            <template v-if="step.article.blocks?.length">
-              <template v-for="(b, bi) in step.article.blocks" :key="bi">
-                <component
-                  v-if="b.type !== 'html'"
-                  :is="(blocks as any)[b.type]"
-                  v-bind="b.props"
-                />
-                <div v-else v-html="b.props.html" />
-              </template>
+          <template v-if="step.article.blocks?.length">
+            <template v-for="(b, bi) in step.article.blocks" :key="bi">
+              <component
+                v-if="b.type !== 'html'"
+                :is="(blocks as any)[b.type]"
+                v-bind="b.props"
+              />
+              <div v-else v-html="b.props.html" />
             </template>
-          </ArticleStep>
-        </div>
+          </template>
+        </ArticleStep>
       </article>
 
       <ClientOnly v-if="controls">
