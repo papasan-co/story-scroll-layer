@@ -22,9 +22,14 @@ const props = withDefaults(defineProps<{
    * Optional brand color for progress bar / theming.
    */
   brandColor?: string
+  /**
+   * Use an internal scroll panel for the article column (preview/editor mode).
+   */
+  panelScroll?: boolean
 }>(), {
   controls: true,
   brandColor: '#007c7e',
+  panelScroll: false,
 })
 
 const scrollyRootRef = ref<HTMLElement | null>(null)
@@ -79,6 +84,7 @@ watch(activeStep, () => {
       id="scrolly"
       ref="scrollyRootRef"
       class="flex md:flex-row flex-col w-full min-w-0 md:overflow-x-hidden"
+      :class="props.panelScroll ? 'md:h-screen md:overflow-hidden md:items-stretch' : ''"
     >
       <ScrollVisual
         :scene-key="activeScene.key"
@@ -97,6 +103,7 @@ watch(activeStep, () => {
           isFullLayout
             ? 'md:hidden'
             : 'pointer-events-none md:pointer-events-auto z-10 lg:z-10',
+          props.panelScroll ? 'md:h-screen md:overflow-y-auto' : '',
         ]"
       >
         <ArticleStep
@@ -131,4 +138,3 @@ watch(activeStep, () => {
     </section>
   </div>
 </template>
-
