@@ -35,12 +35,16 @@ const props = withDefaults(defineProps<{
 const scrollyRootRef = ref<HTMLElement | null>(null)
 const stepsRootRef = ref<HTMLElement | null>(null)
 
+const effectivePanelScroll = computed(() => !!props.panelScroll)
+
 const flatSteps = computed(() => useStepStructure(props.scenes))
 const visualRefs = reactive<Record<string, any>>({})
 
 const { activeStep, stepsReady } = useIoScroller(flatSteps.value, props.scenes, visualRefs, {
   stepsRoot: stepsRootRef,
   stepSelector: '.step',
+  scrollRoot: effectivePanelScroll.value ? stepsRootRef : null,
+  disableSnap: effectivePanelScroll.value,
 })
 
 useCssVarScroll(scrollyRootRef)
@@ -83,8 +87,8 @@ watch(activeStep, () => {
     <section
       id="scrolly"
       ref="scrollyRootRef"
-      class="flex md:flex-row flex-col w-full min-w-0 md:overflow-x-hidden"
-      :class="props.panelScroll ? 'md:h-screen md:overflow-hidden md:items-stretch' : ''"
+      class="flex md:flex-row flex-col w-full min-w-0"
+      :class="effectivePanelScroll ? 'md:h-screen md:items-stretch' : ''"
     >
       <ScrollVisual
         :scene-key="activeScene.key"
@@ -103,7 +107,7 @@ watch(activeStep, () => {
           isFullLayout
             ? 'md:hidden'
             : 'pointer-events-none md:pointer-events-auto z-10 lg:z-10',
-          props.panelScroll ? 'md:h-screen md:overflow-y-auto' : '',
+          effectivePanelScroll ? 'md:h-screen md:overflow-y-auto md:overscroll-contain' : '',
         ]"
       >
         <ArticleStep
@@ -133,6 +137,7 @@ watch(activeStep, () => {
           :active-visual="activeVisualRef"
           :steps-root="stepsRootRef"
           step-selector=".step"
+          :scroll-container="effectivePanelScroll ? stepsRootRef : null"
         />
       </ClientOnly>
     </section>

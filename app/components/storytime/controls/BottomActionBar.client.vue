@@ -22,6 +22,11 @@ const props = defineProps<{
    */
   stepsRoot?: HTMLElement | null
   stepSelector?: string
+  /**
+   * Optional scroll container (panel-scroll mode).
+   * When provided, navigation scrolls this container instead of the window.
+   */
+  scrollContainer?: HTMLElement | null
 }>()
 
 const isMobile = ref(false)
@@ -72,6 +77,16 @@ function scrollToStep(index: number) {
   const el = els[index]
   if (!el) return
   const r = el.getBoundingClientRect()
+
+  const root = props.scrollContainer ?? null
+  if (root) {
+    const rootRect = root.getBoundingClientRect()
+    const offsetTop = r.top - rootRect.top
+    const target = root.scrollTop + offsetTop - (root.clientHeight / 2 - r.height / 2)
+    root.scrollTo({ top: target, behavior: 'smooth' })
+    return
+  }
+
   const targetY = window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
   window.scrollTo({ top: targetY, behavior: 'smooth' })
 }

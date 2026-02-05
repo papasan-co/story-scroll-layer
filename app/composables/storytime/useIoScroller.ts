@@ -23,6 +23,15 @@ export interface UseIoScrollerOptions {
    */
   stepsRoot?: Ref<HTMLElement | null>
   /**
+   * Optional scroll container for panel-scroll mode.
+   * When provided, desktop activation + snapping are computed relative to this element.
+   */
+  scrollRoot?: Ref<HTMLElement | null> | null
+  /**
+   * Disable desktop snap-to-step behavior (useful for panel-scroll/editor mode).
+   */
+  disableSnap?: Ref<boolean> | boolean
+  /**
    * CSS selector for step elements.
    */
   stepSelector?: string
@@ -61,10 +70,20 @@ export function useIoScroller(
 
   function snapToStep(el: HTMLElement) {
     const r = el.getBoundingClientRect()
-    const targetY = window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
-    if (Math.abs(window.scrollY - targetY) > 2) {
-      window.scrollTo({ top: targetY, behavior: 'smooth' })
+    const rootEl = options.scrollRoot && 'value' in options.scrollRoot ? options.scrollRoot.value : null
+    if (rootEl) {
+      const rootRect = rootEl.getBoundingClientRect()
+      const current = rootEl.scrollTop
+      const offsetTop = r.top - rootRect.top
+      const target = current + offsetTop - (rootEl.clientHeight / 2 - r.height / 2)
+      if (Math.abs(rootEl.scrollTop - target) > 2) {
+        rootEl.scrollTo({ top: target, behavior: 'smooth' })
+      }
+      return
     }
+
+    const targetY = window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
+    if (Math.abs(window.scrollY - targetY) > 2) window.scrollTo({ top: targetY, behavior: 'smooth' })
   }
   const snapThrottled = throttle(snapToStep, 500)
 
@@ -214,6 +233,14 @@ export function useIoScroller(
 
       const isMobile = window.innerWidth < LG_BREAKPOINT
       if (!isMobile) {
+        const rootEl = options.scrollRoot && 'value' in options.scrollRoot ? options.scrollRoot.value : null
+        const disableSnap =
+          typeof options.disableSnap === 'boolean'
+            ? options.disableSnap
+            : options.disableSnap && 'value' in options.disableSnap
+              ? options.disableSnap.value
+              : false
+
         io = new IntersectionObserver(
           (entries) => {
             let bestIndex = -1
@@ -237,7 +264,7 @@ export function useIoScroller(
 
             if (bestIndex !== -1) {
               activeStep.value = bestIndex
-              if (snapAllowed.value) snapThrottled(stepsEls[bestIndex] as HTMLElement)
+              if (snapAllowed.value && !disableSnap) snapThrottled(stepsEls[bestIndex] as HTMLElement)
 
               nextTick(() => {
                 const { sceneIdx, localStep } = flatSteps[bestIndex]
@@ -247,7 +274,7 @@ export function useIoScroller(
             }
           },
           {
-            root: null,
+            root: rootEl,
             rootMargin: '0px 0px -40% 0px',
             threshold: 0.4,
           }
