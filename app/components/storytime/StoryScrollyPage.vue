@@ -120,7 +120,7 @@ watch(activeStep, () => {
           <template v-if="step.article.blocks?.length">
             <template v-for="(b, bi) in step.article.blocks" :key="bi">
               <component
-                v-if="b.type !== 'html'"
+                v-if="b.type !== 'html' && b.type !== 'markdown'"
                 :is="(blocks as any)[b.type]"
                 v-bind="b.props"
               />
