@@ -26,10 +26,15 @@ const props = withDefaults(defineProps<{
    * Use an internal scroll panel for the article column (preview/editor mode).
    */
   panelScroll?: boolean
+  /**
+   * Optional CSS variables resolved by host (story/scene brand theming).
+   */
+  themeVars?: Record<string, string> | null
 }>(), {
   controls: true,
   brandColor: '#007c7e',
   panelScroll: false,
+  themeVars: null,
 })
 
 const scrollyRootRef = ref<HTMLElement | null>(null)
@@ -62,6 +67,43 @@ const activeVisualRef = computed(() => {
 
 const isFullLayout = computed(() => activeScene.value?.layout === 'full')
 
+const rootStyle = computed<Record<string, string>>(() => {
+  const vars: Record<string, string> = {
+    '--brand-primary': props.brandColor,
+    '--story-visual-bg': '#ffffff',
+    '--story-visual-text': '#111111',
+    '--story-narrative-bg': '#ffffff',
+    '--story-narrative-text': '#111111',
+    '--story-divider': 'rgba(17, 17, 17, 0.14)',
+    '--story-cta-bg': props.brandColor,
+    '--story-cta-text': '#ffffff',
+    '--story-font-heading': 'inherit',
+    '--story-font-body': 'inherit',
+    // Legacy aliases.
+    '--story-bg': '#ffffff',
+    '--story-text': '#111111',
+    '--story-button': props.brandColor,
+    '--story-button-text': '#ffffff',
+  }
+
+  const resolved = props.themeVars
+  if (!resolved || typeof resolved !== 'object') {
+    return vars
+  }
+
+  for (const [key, value] of Object.entries(resolved)) {
+    if (typeof key !== 'string' || !key.trim()) continue
+    if (typeof value !== 'string' || !value.trim()) continue
+    vars[key] = value
+  }
+
+  if (!vars['--brand-primary']) {
+    vars['--brand-primary'] = vars['--story-cta-bg'] || props.brandColor
+  }
+
+  return vars
+})
+
 const blocks = {
   copy: ArticleCopy,
   cta: ArticleCTA,
@@ -83,16 +125,19 @@ watch(activeStep, () => {
 </script>
 
 <template>
-  <div :style="{ '--brand-primary': brandColor }">
+  <div
+    class="autumn-story-root"
+    :style="rootStyle"
+  >
     <section
       id="scrolly"
       ref="scrollyRootRef"
-      class="flex md:flex-row flex-col w-full min-w-0"
+      class="flex md:flex-row flex-col w-full min-w-0 bg-[var(--story-visual-bg)] text-[var(--story-visual-text)] [font-family:var(--story-font-body)]"
       :class="effectivePanelScroll ? 'md:h-screen md:items-stretch' : ''"
     >
       <ScrollVisual
         :scene-key="activeScene.key"
-        class="shrink-0 min-w-0"
+        class="shrink-0 min-w-0 bg-[var(--story-visual-bg)] text-[var(--story-visual-text)]"
         :class="isFullLayout ? 'w-full md:z-20' : 'w-full md:w-[60%]'"
         @ready="onVisualReady"
       >
@@ -101,7 +146,8 @@ watch(activeStep, () => {
 
       <article
         ref="stepsRootRef"
-        class="w-full md:w-[40%] min-w-0 mx-auto md:mx-0 px-6 md:px-10 lg:px-16 transition-opacity duration-500 pointer-events-none md:pointer-events-auto md:border-l md:border-gray-200 dark:md:border-gray-800"
+        class="w-full md:w-[40%] min-w-0 mx-auto md:mx-0 px-6 md:px-10 lg:px-16 transition-opacity duration-500 pointer-events-none md:pointer-events-auto md:border-l bg-[var(--story-narrative-bg)] text-[var(--story-narrative-text)]"
+        :style="{ borderLeftColor: 'var(--story-divider)' }"
         :class="[
           { 'opacity-0': !stepsReady, 'opacity-100': stepsReady },
           isFullLayout

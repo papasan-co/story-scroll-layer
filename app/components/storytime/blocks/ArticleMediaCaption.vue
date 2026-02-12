@@ -17,8 +17,7 @@ defineProps<{
 
 <template>
   <div :class="['text-sm leading-snug', align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left']">
-    <p v-if="caption" class="text-slate-700" v-html="caption" />
-    <p v-if="credit" class="text-xs text-slate-500 mt-1" v-html="credit" />
+    <p v-if="caption" class="text-[var(--story-narrative-text)]/85" v-html="caption" />
+    <p v-if="credit" class="text-xs text-[var(--story-narrative-text)]/65 mt-1" v-html="credit" />
   </div>
 </template>
-

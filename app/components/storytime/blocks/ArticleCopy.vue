@@ -47,9 +47,9 @@ const cta = computed(() => {
 const ctaClasses = computed(() => {
   if (!cta.value) return ''
   const base = 'inline-flex items-center gap-2 font-semibold px-4 py-2 rounded-lg transition'
-  const primary = 'bg-[#007c7e] text-white hover:brightness-105'
-  const secondary = 'border border-[#007c7e] text-[#007c7e] hover:bg-[#007c7e]/10'
-  const tone = cta.value.tone === 'emphasis' ? 'shadow-lg shadow-[#007c7e]/20' : ''
+  const primary = 'bg-[var(--story-cta-bg)] text-[var(--story-cta-text)] hover:brightness-105'
+  const secondary = 'border border-[var(--story-cta-bg)] text-[var(--story-cta-bg)] hover:opacity-90'
+  const tone = cta.value.tone === 'emphasis' ? 'shadow-lg' : ''
   return `${base} ${cta.value.style === 'secondary' ? secondary : primary} ${tone}`
 })
 
@@ -67,7 +67,7 @@ function handleScroll(target: string) {
       v-if="pre"
       :class="[
         'uppercase tracking-widest text-md font-semibold',
-        preColor || 'text-gray-500',
+        preColor || 'text-[var(--story-narrative-text)]/65',
       ]"
     >
       {{ pre }}
@@ -76,24 +76,24 @@ function handleScroll(target: string) {
     <h2
       v-if="title"
       :class="[
-        'text-xl lg:text-2xl font-semibold leading-tight lg:dark:text-white',
-        titleColor || 'text-black',
+        'text-xl lg:text-2xl font-semibold leading-tight [font-family:var(--story-font-heading)]',
+        titleColor || 'text-[var(--story-narrative-text)]',
       ]"
     >
       <span v-html="title" />
       <template v-if="highlight && highlightMode === 'line'">
         <br />
-        <span class="text-[#f55742]" v-html="highlight" />
+        <span class="text-[var(--brand-primary)]" v-html="highlight" />
       </template>
       <template v-else-if="highlight && highlightMode === 'inline'">
-        <span class="text-[#f55742]"> {{ highlight }}</span>
+        <span class="text-[var(--brand-primary)]"> {{ highlight }}</span>
       </template>
     </h2>
 
     <div
       v-for="(p, i) in paragraphs"
       :key="i"
-      class="storytime-copy-block text-lg text-gray-700 lg:dark:text-white"
+      class="storytime-copy-block text-lg text-[var(--story-narrative-text)]/85"
       v-html="p"
     />
 
@@ -102,9 +102,11 @@ function handleScroll(target: string) {
       :href="refLink.url"
       target="_blank"
       rel="noopener noreferrer"
-      class="self-start inline-block text-xs text-gray-600 bg-gray-100 border border-gray-200
-             rounded-full px-2 py-0.5 hover:bg-gray-200 hover:border-gray-300
-             transition-colors duration-200"
+      class="self-start inline-block text-xs text-[var(--story-narrative-text)]/75 rounded-full px-2 py-0.5 transition-colors duration-200"
+      :style="{
+        backgroundColor: 'color-mix(in srgb, var(--story-narrative-text) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--story-narrative-text) 20%, transparent)',
+      }"
     >
       {{ refLink.label }}
     </a>
@@ -176,7 +178,7 @@ function handleScroll(target: string) {
 }
 
 .storytime-copy-block :deep(a) {
-  color: #007c7e;
+  color: var(--brand-primary, #007c7e);
   text-decoration: underline;
 }
 </style>

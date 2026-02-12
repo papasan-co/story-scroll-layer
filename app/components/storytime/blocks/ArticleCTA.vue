@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<{
   actions?: CtaAction[]
 }>(), {
   pre: '',
-  preColor: 'text-[#007c7e]',
+  preColor: 'text-[var(--brand-primary)]',
   headline: '',
   caption: '',
 })
@@ -43,8 +43,8 @@ const action = computed(() => {
 const actionClasses = computed(() => {
   if (!action.value) return ''
   const base = 'inline-flex items-center gap-2 font-bold px-4 py-2 rounded-lg transition'
-  const primary = 'bg-[#007c7e] text-white hover:brightness-105'
-  const secondary = 'border border-[#007c7e] text-[#007c7e] hover:bg-[#007c7e]/10'
+  const primary = 'bg-[var(--story-cta-bg)] text-[var(--story-cta-text)] hover:brightness-105'
+  const secondary = 'border border-[var(--story-cta-bg)] text-[var(--story-cta-bg)] hover:opacity-90'
   return `${base} ${action.value.style === 'secondary' ? secondary : primary}`
 })
 
@@ -57,10 +57,15 @@ function handleScroll(target: string) {
 </script>
 
 <template>
-  <section class="max-w-[720px] mx-auto text-left pointer-events-auto">
+  <section class="max-w-[720px] mx-auto text-left pointer-events-auto [font-family:var(--story-font-body)]">
     <p v-if="props.pre" :class="['uppercase tracking-widest font-bold text-sm mb-1', props.preColor]">{{ props.pre }}</p>
-    <h3 v-if="props.headline" class="font-extrabold text-xl text-[#2c324e] mb-1">{{ props.headline }}</h3>
-    <p v-if="props.caption" class="text-lg text-slate-700 mb-3">{{ props.caption }}</p>
+    <h3
+      v-if="props.headline"
+      class="font-extrabold text-xl text-[var(--story-narrative-text)] mb-1 [font-family:var(--story-font-heading)]"
+    >
+      {{ props.headline }}
+    </h3>
+    <p v-if="props.caption" class="text-lg text-[var(--story-narrative-text)]/85 mb-3">{{ props.caption }}</p>
 
     <template v-if="action">
       <a
