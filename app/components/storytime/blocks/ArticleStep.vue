@@ -21,7 +21,7 @@ const innerClass = computed(() => ({
   <div class="justify-end lg:justify-center">
     <div
       :class="innerClass"
-      class="max-w-2xl p-4 bg-[var(--story-narrative-bg)] lg:bg-[transparent] rounded-md border border-[var(--story-divider)] lg:border-0 text-[var(--story-narrative-text)]"
+      class="max-w-2xl p-4 bg-[var(--story-narrative-bg)] lg:bg-[transparent] rounded-md border border-[var(--story-narrative-card-border,var(--story-divider))] lg:border-0 text-[var(--story-narrative-text)]"
       data-article-card
     >
       <!-- Priority: component > html > slot -->

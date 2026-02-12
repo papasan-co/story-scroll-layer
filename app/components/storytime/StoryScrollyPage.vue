@@ -74,6 +74,7 @@ const rootStyle = computed<Record<string, string>>(() => {
     '--story-visual-text': '#111111',
     '--story-narrative-bg': '#ffffff',
     '--story-narrative-text': '#111111',
+    '--story-narrative-card-border': 'rgba(17, 17, 17, 0.14)',
     '--story-divider': 'rgba(17, 17, 17, 0.14)',
     '--story-cta-bg': props.brandColor,
     '--story-cta-text': '#ffffff',
@@ -146,7 +147,7 @@ watch(activeStep, () => {
 
       <article
         ref="stepsRootRef"
-        class="w-full md:w-[40%] min-w-0 mx-auto md:mx-0 px-6 md:px-10 lg:px-16 transition-opacity duration-500 pointer-events-none md:pointer-events-auto md:border-l bg-[var(--story-narrative-bg)] text-[var(--story-narrative-text)]"
+        class="storytime-article-column w-full md:w-[40%] min-w-0 mx-auto md:mx-0 px-6 md:px-10 lg:px-16 transition-opacity duration-500 pointer-events-none md:pointer-events-auto md:border-l text-[var(--story-narrative-text)]"
         :style="{ borderLeftColor: 'var(--story-divider)' }"
         :class="[
           { 'opacity-0': !stepsReady, 'opacity-100': stepsReady },
@@ -189,3 +190,15 @@ watch(activeStep, () => {
     </section>
   </div>
 </template>
+
+<style scoped>
+.storytime-article-column {
+  background-color: transparent;
+}
+
+@media (min-width: 1024px) {
+  .storytime-article-column {
+    background-color: var(--story-narrative-bg);
+  }
+}
+</style>

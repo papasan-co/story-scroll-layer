@@ -446,12 +446,16 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
   ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
 
   const brandPrimary = defaults.brandPrimary || ctaPair.background
+  const narrativeCardBorder = contrastRatio(narrativePair.background, '#FFFFFF') >= 1.45
+    ? narrativePair.background
+    : toRgba(narrativePair.text, 0.18)
 
   const cssVars: Record<string, string> = {
     '--story-visual-bg': visualPair.background,
     '--story-visual-text': visualPair.text,
     '--story-narrative-bg': narrativePair.background,
     '--story-narrative-text': narrativePair.text,
+    '--story-narrative-card-border': narrativeCardBorder,
     '--story-cta-bg': ctaPair.background,
     '--story-cta-text': ctaPair.text,
     '--story-divider': toRgba(narrativePair.text, 0.18),
