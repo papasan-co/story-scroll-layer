@@ -453,6 +453,10 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
   const cssVars: Record<string, string> = {
     '--story-visual-bg': visualPair.background,
     '--story-visual-text': visualPair.text,
+    '--story-surface-muted': 'color-mix(in srgb, var(--story-visual-bg, #FFFFFF) 92%, var(--story-visual-text, #111111) 8%)',
+    '--story-card-bg': 'color-mix(in srgb, var(--story-visual-bg, #FFFFFF) 96%, var(--story-visual-text, #111111) 4%)',
+    '--story-card-border': 'color-mix(in srgb, var(--story-visual-text, #111111) 18%, transparent)',
+    '--story-accent': brandPrimary,
     '--story-narrative-bg': narrativePair.background,
     '--story-narrative-text': narrativePair.text,
     '--story-narrative-card-border': narrativeCardBorder,
