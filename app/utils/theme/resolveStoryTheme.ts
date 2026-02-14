@@ -147,6 +147,33 @@ function ensureAaTextOnBackground(
   return fallbackText
 }
 
+function ensureUiContrastOnBackground(
+  backgroundHex: string,
+  preferredHex: string,
+  minRatio = 3,
+): string {
+  if (contrastRatio(backgroundHex, preferredHex) >= minRatio) {
+    return preferredHex
+  }
+
+  for (let step = 1; step <= 10; step++) {
+    const amount = step * 0.05
+    const lighter = adjustHex(preferredHex, 1 + amount)
+    if (contrastRatio(backgroundHex, lighter) >= minRatio) {
+      return lighter
+    }
+
+    const darker = adjustHex(preferredHex, 1 - amount)
+    if (contrastRatio(backgroundHex, darker) >= minRatio) {
+      return darker
+    }
+  }
+
+  return contrastRatio(backgroundHex, '#FFFFFF') >= contrastRatio(backgroundHex, FALLBACK_INK)
+    ? '#FFFFFF'
+    : FALLBACK_INK
+}
+
 function ensureAaPair(
   backgroundHex: string,
   preferredTextHex: string,
@@ -464,22 +491,24 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     background: ctaBg,
     text: ensureAaTextOnBackground(ctaBg, ctaTextRaw),
   }
-  const controlsBg = resolveColorValue(
+  const controlsBgPreferred = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_background'),
     slots,
   ) ?? adjustHex(visualPair.background, isLight(visualPair.background) ? 0.94 : 1.06)
+  const controlsBgApplied = ensureUiContrastOnBackground(visualPair.background, controlsBgPreferred, 3)
   const controlsTextRaw = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_text'),
     slots,
   ) ?? visualPair.text
   const controlsPair = {
-    background: controlsBg,
-    text: ensureAaTextOnBackground(controlsBg, controlsTextRaw),
+    background: controlsBgApplied,
+    text: ensureAaTextOnBackground(controlsBgApplied, controlsTextRaw),
   }
-  const controlsProgress = resolveColorValue(
+  const controlsProgressPreferred = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_progress'),
     slots,
   ) ?? ctaPair.background
+  const controlsProgressApplied = ensureUiContrastOnBackground(controlsPair.background, controlsProgressPreferred, 3)
 
   const fonts = Array.isArray(input.brandFonts) ? input.brandFonts : []
   const headingFontId =
@@ -530,7 +559,7 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     '--story-controls-bg': controlsPair.background,
     '--story-controls-text': controlsPair.text,
     '--story-controls-divider': toRgba(controlsPair.text, 0.18),
-    '--story-controls-progress': controlsProgress,
+    '--story-controls-progress': controlsProgressApplied,
     '--story-divider': toRgba(narrativePair.text, 0.18),
     '--brand-primary': brandPrimary,
     '--color-primary-500': brandPrimary,
