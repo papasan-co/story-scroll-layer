@@ -82,6 +82,10 @@ const rootStyle = computed<Record<string, string>>(() => {
     '--story-divider': 'rgba(17, 17, 17, 0.14)',
     '--story-cta-bg': props.brandColor,
     '--story-cta-text': '#ffffff',
+    '--story-controls-bg': 'color-mix(in srgb, var(--story-visual-bg, #FFFFFF) 94%, var(--story-visual-text, #111111) 6%)',
+    '--story-controls-text': 'var(--story-visual-text, #111111)',
+    '--story-controls-divider': 'color-mix(in srgb, var(--story-controls-text, #111111) 18%, transparent)',
+    '--story-controls-progress': 'var(--story-accent, var(--brand-primary, #007c7e))',
     '--story-font-heading': 'inherit',
     '--story-font-body': 'inherit',
     // Legacy aliases.

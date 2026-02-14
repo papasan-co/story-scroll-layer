@@ -11,6 +11,9 @@ export const STORY_THEME_COLOR_KEYS = [
   'narrative_text',
   'cta_background',
   'cta_text',
+  'controls_background',
+  'controls_text',
+  'controls_progress',
 ] as const
 
 export type StoryThemeColorKey = (typeof STORY_THEME_COLOR_KEYS)[number]
@@ -436,6 +439,19 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     slots,
   ) ?? defaults.ctaText
   const ctaPair = ensureAaPair(ctaBg, ctaTextRaw)
+  const controlsBg = resolveColorValue(
+    resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_background'),
+    slots,
+  ) ?? adjustHex(visualPair.background, isLight(visualPair.background) ? 0.94 : 1.06)
+  const controlsTextRaw = resolveColorValue(
+    resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_text'),
+    slots,
+  ) ?? visualPair.text
+  const controlsPair = ensureAaPair(controlsBg, controlsTextRaw)
+  const controlsProgress = resolveColorValue(
+    resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_progress'),
+    slots,
+  ) ?? ctaPair.background
 
   const fonts = Array.isArray(input.brandFonts) ? input.brandFonts : []
   const headingFontId =
@@ -483,6 +499,10 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     '--story-narrative-card-border': narrativeCardBorder,
     '--story-cta-bg': ctaPair.background,
     '--story-cta-text': ctaPair.text,
+    '--story-controls-bg': controlsPair.background,
+    '--story-controls-text': controlsPair.text,
+    '--story-controls-divider': toRgba(controlsPair.text, 0.18),
+    '--story-controls-progress': controlsProgress,
     '--story-divider': toRgba(narrativePair.text, 0.18),
     '--brand-primary': brandPrimary,
     '--color-primary-500': brandPrimary,
