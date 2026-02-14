@@ -131,6 +131,22 @@ function bestForeground(bgHex: string): string {
   return whiteContrast >= inkContrast ? '#FFFFFF' : FALLBACK_INK
 }
 
+function ensureAaTextOnBackground(
+  backgroundHex: string,
+  preferredTextHex: string,
+): string {
+  if (contrastRatio(backgroundHex, preferredTextHex) >= 4.5) {
+    return preferredTextHex
+  }
+
+  const fallbackText = bestForeground(backgroundHex)
+  if (contrastRatio(backgroundHex, fallbackText) >= 4.5) {
+    return fallbackText
+  }
+
+  return fallbackText
+}
+
 function ensureAaPair(
   backgroundHex: string,
   preferredTextHex: string,
@@ -416,7 +432,10 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'visual_text'),
     slots,
   ) ?? defaults.visualText
-  const visualPair = ensureAaPair(visualBg, visualTextRaw)
+  const visualPair = {
+    background: visualBg,
+    text: ensureAaTextOnBackground(visualBg, visualTextRaw),
+  }
 
   const narrativeBg = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'narrative_background'),
@@ -427,7 +446,10 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'narrative_text'),
     slots,
   ) ?? defaults.narrativeText
-  const narrativePair = ensureAaPair(narrativeBg, narrativeTextRaw)
+  const narrativePair = {
+    background: narrativeBg,
+    text: ensureAaTextOnBackground(narrativeBg, narrativeTextRaw),
+  }
 
   const ctaBg = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'cta_background'),
@@ -438,7 +460,10 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'cta_text'),
     slots,
   ) ?? defaults.ctaText
-  const ctaPair = ensureAaPair(ctaBg, ctaTextRaw)
+  const ctaPair = {
+    background: ctaBg,
+    text: ensureAaTextOnBackground(ctaBg, ctaTextRaw),
+  }
   const controlsBg = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_background'),
     slots,
@@ -447,7 +472,10 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_text'),
     slots,
   ) ?? visualPair.text
-  const controlsPair = ensureAaPair(controlsBg, controlsTextRaw)
+  const controlsPair = {
+    background: controlsBg,
+    text: ensureAaTextOnBackground(controlsBg, controlsTextRaw),
+  }
   const controlsProgress = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_progress'),
     slots,
