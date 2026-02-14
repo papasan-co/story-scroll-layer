@@ -31,6 +31,7 @@ export type StoryTheme = {
 export type BrandFontLike = {
   id?: string | null
   uuid?: string | null
+  role?: string | null
   family?: string | null
   provider?: string | null
   external_url?: string | null
@@ -276,6 +277,13 @@ function findFontById(fonts: BrandFontLike[], id: string | null | undefined): Br
   }) ?? null
 }
 
+function findFontByRole(fonts: BrandFontLike[], role: 'heading' | 'body'): BrandFontLike | null {
+  return fonts.find((font) => {
+    const fontRole = typeof font.role === 'string' ? font.role.trim().toLowerCase() : ''
+    return fontRole === role
+  }) ?? null
+}
+
 function googleFontUrl(family: string, weights: number[] = [400, 700]): string {
   const uniqueWeights = [...new Set(weights)].sort((a, b) => a - b)
   const familyParam = family.trim().replace(/\s+/g, '+')
@@ -430,13 +438,26 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
   const ctaPair = ensureAaPair(ctaBg, ctaTextRaw)
 
   const fonts = Array.isArray(input.brandFonts) ? input.brandFonts : []
+  const headingFontId =
+    sceneTheme?.typography?.heading_font_id
+    ?? storyTheme?.typography?.heading_font_id
+    ?? findFontByRole(fonts, 'heading')?.uuid
+    ?? findFontByRole(fonts, 'heading')?.id
+    ?? null
+  const bodyFontId =
+    sceneTheme?.typography?.body_font_id
+    ?? storyTheme?.typography?.body_font_id
+    ?? findFontByRole(fonts, 'body')?.uuid
+    ?? findFontByRole(fonts, 'body')?.id
+    ?? null
+
   const headingFont = resolveFontFamily(
     fonts,
-    sceneTheme?.typography?.heading_font_id ?? storyTheme?.typography?.heading_font_id ?? null,
+    headingFontId,
   )
   const bodyFont = resolveFontFamily(
     fonts,
-    sceneTheme?.typography?.body_font_id ?? storyTheme?.typography?.body_font_id ?? null,
+    bodyFontId,
   )
 
   const stylesheets = [

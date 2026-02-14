@@ -196,6 +196,15 @@ watch(activeStep, () => {
 </template>
 
 <style scoped>
+.autumn-story-root :deep(h1),
+.autumn-story-root :deep(h2),
+.autumn-story-root :deep(h3),
+.autumn-story-root :deep(h4),
+.autumn-story-root :deep(h5),
+.autumn-story-root :deep(h6) {
+  font-family: var(--story-font-heading);
+}
+
 .storytime-article-column {
   background-color: transparent;
 }
