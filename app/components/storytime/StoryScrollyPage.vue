@@ -11,6 +11,7 @@ import ArticleCopy from './blocks/ArticleCopy.vue'
 import ArticleCTA from './blocks/ArticleCTA.vue'
 import ArticleMediaCaption from './blocks/ArticleMediaCaption.vue'
 import BottomActionBar from './controls/BottomActionBar.client.vue'
+import StorySideProgressRail from './controls/StorySideProgressRail.client.vue'
 
 const props = withDefaults(defineProps<{
   scenes: StoryScene[]
@@ -18,6 +19,10 @@ const props = withDefaults(defineProps<{
    * Enable/disable the bottom controls.
    */
   controls?: boolean
+  /**
+   * Optional right-edge progress dots for scroll/story playback (story chrome — replaces pod-local rails).
+   */
+  showSideProgress?: boolean
   /**
    * Optional brand color for progress bar / theming.
    */
@@ -35,6 +40,7 @@ const props = withDefaults(defineProps<{
   brandColor: '#007c7e',
   panelScroll: false,
   themeVars: null,
+  showSideProgress: false,
 })
 
 const scrollyRootRef = ref<HTMLElement | null>(null)
@@ -194,6 +200,10 @@ watch(activeStep, () => {
           step-selector=".step"
           :scroll-container="effectivePanelScroll ? stepsRootRef : null"
         />
+      </ClientOnly>
+
+      <ClientOnly v-if="showSideProgress">
+        <StorySideProgressRail :active-index="activeStep" :total="flatSteps.length" />
       </ClientOnly>
     </section>
   </div>
