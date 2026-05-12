@@ -170,6 +170,8 @@ watch(activeStep, () => {
           :key="i"
           class="step flex items-start lg:items-center z-50"
           :data-scene-key="props.scenes[step.sceneIdx]?.key"
+          :data-au-scene-id="props.scenes[step.sceneIdx]?.key"
+          :data-au-scene-index="step.sceneIdx"
           :align="step.article.align || 'left'"
         >
           <template v-if="step.article.blocks?.length">
