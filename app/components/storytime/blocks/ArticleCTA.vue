@@ -72,6 +72,9 @@ function handleScroll(target: string) {
         v-if="action.action === 'url'"
         :href="action.target"
         :class="actionClasses"
+        data-au-track="cta"
+        :data-au-label="action.label"
+        :data-au-modifier="action.action"
       >
         {{ action.label }}
       </a>
@@ -80,6 +83,9 @@ function handleScroll(target: string) {
         v-else-if="action.action === 'modal'"
         :class="actionClasses"
         type="button"
+        data-au-track="cta"
+        :data-au-label="action.label"
+        :data-au-modifier="action.action"
         @click="open = true"
       >
         {{ action.label }}
@@ -89,6 +95,9 @@ function handleScroll(target: string) {
         v-else
         :class="actionClasses"
         type="button"
+        data-au-track="cta"
+        :data-au-label="action.label"
+        :data-au-modifier="action.action"
         @click="handleScroll(action.target)"
       >
         {{ action.label }}
