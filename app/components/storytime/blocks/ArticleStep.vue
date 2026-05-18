@@ -7,6 +7,7 @@ const props = defineProps<{
   component?: any
   componentProps?: Record<string, any>
   html?: string
+  empty?: boolean
 }>()
 
 const innerClass = computed(() => ({
@@ -20,9 +21,14 @@ const innerClass = computed(() => ({
 <template>
   <div class="justify-end lg:justify-center">
     <div
-      :class="innerClass"
-      class="max-w-2xl p-4 bg-[var(--story-narrative-bg)] lg:bg-[transparent] rounded-md border border-[var(--story-narrative-card-border,var(--story-divider))] lg:border-0 text-[var(--story-narrative-text)]"
+      :class="[
+        innerClass,
+        props.empty
+          ? 'max-w-none p-0 bg-transparent rounded-none border-0 text-[var(--story-narrative-text)]'
+          : 'max-w-2xl p-4 bg-[var(--story-narrative-bg)] lg:bg-[transparent] rounded-md border border-[var(--story-narrative-card-border,var(--story-divider))] lg:border-0 text-[var(--story-narrative-text)]',
+      ]"
       data-article-card
+      :data-article-empty="props.empty ? 'true' : undefined"
     >
       <!-- Priority: component > html > slot -->
       <component v-if="component" :is="component" v-bind="componentProps" />

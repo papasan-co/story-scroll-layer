@@ -1,7 +1,19 @@
 import { ref, onMounted, onBeforeUnmount, nextTick, type Ref } from 'vue'
-import type { FlatStoryStep, StoryScene } from '../../types/storytime/scenes'
+import type {
+  FlatStoryStep,
+  StoryActivationMode,
+  StoryScene,
+  StoryScrollTarget,
+} from '../../types/storytime/scenes'
 
 const LG_BREAKPOINT = 1024
+
+export function isStepHiddenForViewport(el: HTMLElement, isDesktop = window.innerWidth > LG_BREAKPOINT): boolean {
+  if (isDesktop && el.dataset.mobileOnly === 'true') return true
+  if (!isDesktop && el.dataset.desktopOnly === 'true') return true
+
+  return el.offsetParent === null
+}
 
 // tiny inline throttle so we can drop lodash-es
 function throttle<T extends (...args: any[]) => void>(fn: T, wait = 300) {
@@ -39,6 +51,23 @@ export interface UseIoScrollerOptions {
    * Mobile-only heuristic: how far above top previous card must be before activating next.
    */
   mobilePrevExitPx?: number
+  /**
+   * Treat desktop as a viewport-card stack for stories that intentionally use
+   * mobile-style scroll runway on every viewport.
+   */
+  forceMobileSpacing?: Ref<boolean> | boolean
+  /**
+   * Target used by programmatic jumps and optional snapping.
+   * `card` matches coded-story reels where the narrative card is the scroll anchor.
+   */
+  scrollTarget?: Ref<StoryScrollTarget> | StoryScrollTarget
+  /**
+   * Activation heuristic. `card-center` matches source reels whose active step is
+   * driven by the narrative card crossing a viewport anchor.
+   */
+  activationMode?: Ref<StoryActivationMode> | StoryActivationMode
+  activationAnchor?: Ref<number> | number
+  activationHysteresisPx?: Ref<number> | number
 }
 
 export function useIoScroller(
@@ -55,6 +84,12 @@ export function useIoScroller(
   let io: IntersectionObserver | null = null
   let stepsEls: HTMLElement[] = []
   let raf = 0
+  let rafDesktop = 0
+  let lastScrollDrivenChange = 0
+  let programmaticStepIndex: number | null = null
+  let programmaticScrollUntil = 0
+  let desktopScrollRoot: HTMLElement | Window | null = null
+  const SCROLL_DRIVEN_LOCK_MS = 200
   const MOBILE_PREV_EXIT_PX = typeof options.mobilePrevExitPx === 'number'
     ? options.mobilePrevExitPx
     : 100
@@ -68,9 +103,186 @@ export function useIoScroller(
     return Array.from(list)
   }
 
+  const refreshSteps = () => {
+    stepsEls = getSteps()
+    return stepsEls
+  }
+
+  const isDesktopViewport = () => window.innerWidth > LG_BREAKPOINT
+  const forceMobileSpacing = () => {
+    const value = options.forceMobileSpacing
+    if (typeof value === 'boolean') return value
+    return Boolean(value && 'value' in value && value.value)
+  }
+  const scrollTarget = (): StoryScrollTarget => {
+    const value = options.scrollTarget
+    const resolved = typeof value === 'string'
+      ? value
+      : value && 'value' in value
+        ? value.value
+        : undefined
+    return resolved === 'card' ? 'card' : 'step'
+  }
+  const activationMode = (): StoryActivationMode => {
+    const value = options.activationMode
+    const resolved = typeof value === 'string'
+      ? value
+      : value && 'value' in value
+        ? value.value
+        : undefined
+    return resolved === 'card-center' ? 'card-center' : 'step-exit'
+  }
+  const activationAnchor = () => {
+    const value = options.activationAnchor
+    const resolved = typeof value === 'number'
+      ? value
+      : value && 'value' in value
+        ? value.value
+        : undefined
+    return typeof resolved === 'number' && Number.isFinite(resolved)
+      ? Math.max(0, Math.min(1, resolved))
+      : 0.7
+  }
+  const activationHysteresisPx = () => {
+    const value = options.activationHysteresisPx
+    const resolved = typeof value === 'number'
+      ? value
+      : value && 'value' in value
+        ? value.value
+        : undefined
+    return typeof resolved === 'number' && Number.isFinite(resolved)
+      ? Math.max(0, resolved)
+      : 24
+  }
+  const isMobileSpacingMode = () => window.innerWidth < LG_BREAKPOINT || forceMobileSpacing()
+
+  const rootElement = () => options.scrollRoot && 'value' in options.scrollRoot
+    ? options.scrollRoot.value
+    : null
+
+  const stepScrollElement = (stepEl: HTMLElement, target: StoryScrollTarget = scrollTarget()) => {
+    if (target !== 'card') return stepEl
+    return stepEl.querySelector<HTMLElement>('[data-article-card]') || stepEl
+  }
+
+  const visibleStepIndexes = () => {
+    const isDesktop = isDesktopViewport()
+    const steps = refreshSteps()
+
+    return steps.reduce<number[]>((indexes, el, index) => {
+      if (!isStepHiddenForViewport(el, isDesktop)) indexes.push(index)
+      return indexes
+    }, [])
+  }
+
+  const findVisibleStepIndex = (startIndex: number, delta: number) => {
+    const steps = refreshSteps()
+    if (!steps.length) return null
+    const direction = delta < 0 ? -1 : 1
+    let index = Math.min(steps.length - 1, Math.max(0, startIndex))
+
+    while (index >= 0 && index < steps.length) {
+      const el = steps[index]
+      if (el && !isStepHiddenForViewport(el, isDesktopViewport())) return index
+      index += direction
+    }
+
+    return null
+  }
+
+  const getStepTargetIndex = (fromIndex = activeStep.value, delta = 1) => {
+    const direction = delta < 0 ? -1 : 1
+    return findVisibleStepIndex(fromIndex + direction, direction)
+  }
+
+  const resolveVisibleStepIndex = (index: number, direction = 1) => {
+    return findVisibleStepIndex(index, direction)
+  }
+
+  const activateStep = (index: number) => {
+    const stepData = flatSteps[index]
+    if (!stepData) return
+
+    if (activeStep.value !== index) {
+      activeStep.value = index
+    }
+
+    nextTick(() => {
+      const { sceneIdx, localStep } = stepData
+      const scene = scenes[sceneIdx]
+      ;(scene as any)?.visual?.onEnter?.({ step: localStep, ref: visualRefs[scene.key] })
+    })
+  }
+
+  const scrollToStepIndex = (
+    index: number,
+    behavior: ScrollBehavior = 'smooth',
+    direction = index < activeStep.value ? -1 : 1,
+    align: 'center' | 'start' = 'center',
+    targetElement: StoryScrollTarget = scrollTarget(),
+  ) => {
+    const target = findVisibleStepIndex(index, direction)
+    if (target === null) return false
+
+    refreshSteps()
+    const el = stepsEls[target]
+    if (!el) return false
+
+    programmaticStepIndex = target
+    programmaticScrollUntil = Date.now() + 900
+
+    const scrollEl = stepScrollElement(el, targetElement)
+    const r = scrollEl.getBoundingClientRect()
+    const shouldPeekCardFromBottom =
+      align === 'center' &&
+      targetElement === 'card' &&
+      window.matchMedia('(max-width: 1024px)').matches
+    const rootEl = rootElement()
+    if (rootEl) {
+      const rootRect = rootEl.getBoundingClientRect()
+      const offsetTop = r.top - rootRect.top
+      const nextTop = align === 'start'
+        ? rootEl.scrollTop + offsetTop
+        : shouldPeekCardFromBottom
+        ? rootEl.scrollTop + offsetTop - rootEl.clientHeight * 0.85
+        : rootEl.scrollTop + offsetTop - (rootEl.clientHeight / 2 - r.height / 2)
+      rootEl.scrollTo({ top: nextTop, behavior })
+    } else {
+      if (align === 'start' && targetElement === 'step') {
+        el.scrollIntoView({
+          block: 'start',
+          inline: 'nearest',
+          behavior,
+        })
+      } else {
+        const targetY = align === 'start'
+          ? window.scrollY + r.top
+          : shouldPeekCardFromBottom
+          ? window.scrollY + r.top - window.innerHeight * 0.85
+          : window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
+        window.scrollTo({ top: targetY, behavior })
+      }
+    }
+
+    activateStep(target)
+    window.setTimeout(() => {
+      if (programmaticStepIndex !== target) return
+      activateStep(target)
+      programmaticStepIndex = null
+      programmaticScrollUntil = 0
+    }, 950)
+
+    return true
+  }
+
   function snapToStep(el: HTMLElement) {
-    const r = el.getBoundingClientRect()
-    const rootEl = options.scrollRoot && 'value' in options.scrollRoot ? options.scrollRoot.value : null
+    if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) {
+      return
+    }
+
+    const scrollEl = stepScrollElement(el)
+    const r = scrollEl.getBoundingClientRect()
+    const rootEl = rootElement()
     if (rootEl) {
       const rootRect = rootEl.getBoundingClientRect()
       const current = rootEl.scrollTop
@@ -88,7 +300,7 @@ export function useIoScroller(
   const snapThrottled = throttle(snapToStep, 500)
 
   const handleResize = () => {
-    const isMobile = window.innerWidth < LG_BREAKPOINT
+    const isMobile = isMobileSpacingMode()
     const steps = getSteps()
 
     // Always clear inline minHeight on desktop; Tailwind handles it
@@ -190,37 +402,106 @@ export function useIoScroller(
 
   // Mobile-only: activate step i when previous card bottom is at least MOBILE_PREV_EXIT_PX above top
   const onScrollMobile = () => {
-    if (window.innerWidth >= LG_BREAKPOINT) return
+    if (!isMobileSpacingMode()) return
     cancelAnimationFrame(raf)
     raf = requestAnimationFrame(() => {
+      if (activationMode() === 'card-center') {
+        activateClosestCardCenteredStep()
+        return
+      }
+
       if (!stepsEls.length) return
-      let index = 0
-      for (let i = 1; i < stepsEls.length; i++) {
-        const prev = stepsEls[i - 1]
+      const visibleIndexes = visibleStepIndexes()
+      let index = visibleIndexes[0] ?? 0
+
+      for (let i = 1; i < visibleIndexes.length; i++) {
+        const previousIndex = visibleIndexes[i - 1]
+        const currentIndex = visibleIndexes[i]
+        const prev = stepsEls[previousIndex]
         const prevCard = prev.querySelector<HTMLElement>('[data-article-card]') || prev
         const prevBottom = prevCard.getBoundingClientRect().bottom
 
         if (prevBottom <= -MOBILE_PREV_EXIT_PX) {
-          index = i
+          index = currentIndex
         } else {
           break
         }
       }
 
       if (index !== activeStep.value) {
-        activeStep.value = index
-        nextTick(() => {
-          const { sceneIdx, localStep } = flatSteps[index]
-          const scene = scenes[sceneIdx]
-          // Prefer visuals reacting to `step` prop; onEnter is optional.
-          ;(scene as any)?.visual?.onEnter?.({ step: localStep, ref: visualRefs[scene.key] })
-        })
+        activateStep(index)
       }
     })
   }
 
+  const activateClosestCardCenteredStep = () => {
+    if (!stepsEls.length) return
+    if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
+
+    const rootEl = rootElement()
+    const rootRect = rootEl?.getBoundingClientRect()
+    const viewportHeight = rootEl?.clientHeight || window.innerHeight
+    let bestIdx = -1
+    let bestDist = Number.POSITIVE_INFINITY
+
+    const indexes = visibleStepIndexes()
+    for (const index of indexes) {
+      const stepEl = stepsEls[index]
+      const card = stepEl ? stepScrollElement(stepEl, 'card') : null
+      if (!card) continue
+
+      const r = card.getBoundingClientRect()
+      const top = rootRect ? r.top - rootRect.top : r.top
+      const bottom = rootRect ? r.bottom - rootRect.top : r.bottom
+      if (bottom < -viewportHeight || top > viewportHeight * 2) continue
+
+      const articleTrigger = (flatSteps[index]?.article as any)?.triggerCenterFraction
+      const desiredFraction = typeof articleTrigger === 'number'
+        ? Math.max(0, Math.min(1, articleTrigger))
+        : activationAnchor()
+      const desiredY = viewportHeight * desiredFraction
+      const center = top + r.height / 2
+      const dist = Math.abs(center - desiredY)
+
+      if (dist < bestDist) {
+        bestDist = dist
+        bestIdx = index
+      }
+    }
+
+    if (bestIdx === -1 || bestIdx === activeStep.value) return
+
+    const currentEl = stepsEls[activeStep.value]
+    const currentCard = currentEl ? stepScrollElement(currentEl, 'card') : null
+    if (currentCard) {
+      const currentRect = currentCard.getBoundingClientRect()
+      const currentTop = rootRect ? currentRect.top - rootRect.top : currentRect.top
+      const currentTrigger = (flatSteps[activeStep.value]?.article as any)?.triggerCenterFraction
+      const currentDesiredFraction = typeof currentTrigger === 'number'
+        ? Math.max(0, Math.min(1, currentTrigger))
+        : activationAnchor()
+      const currentDesiredY = viewportHeight * currentDesiredFraction
+      const currentCenter = currentTop + currentRect.height / 2
+      const currentDist = Math.abs(currentCenter - currentDesiredY)
+      if (currentDist - bestDist <= activationHysteresisPx()) return
+    }
+
+    lastScrollDrivenChange = Date.now()
+    activateStep(bestIdx)
+  }
+
+  const onScrollDesktop = () => {
+    if (!isDesktopViewport()) return
+    if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
+
+    cancelAnimationFrame(rafDesktop)
+    rafDesktop = requestAnimationFrame(() => {
+      activateClosestCardCenteredStep()
+    })
+  }
+
   function handleMediaChange(e: MediaQueryListEvent | MediaQueryList) {
-    snapAllowed.value = (e as MediaQueryList).matches
+    snapAllowed.value = (e as MediaQueryList).matches && !forceMobileSpacing()
   }
 
   onMounted(() => {
@@ -231,7 +512,7 @@ export function useIoScroller(
     nextTick(() => {
       stepsEls = getSteps()
 
-      const isMobile = window.innerWidth < LG_BREAKPOINT
+      const isMobile = isMobileSpacingMode()
       if (!isMobile) {
         const rootEl = options.scrollRoot && 'value' in options.scrollRoot ? options.scrollRoot.value : null
         const disableSnap =
@@ -243,6 +524,16 @@ export function useIoScroller(
 
         io = new IntersectionObserver(
           (entries) => {
+            if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) {
+              activateStep(programmaticStepIndex)
+              return
+            }
+            if (Date.now() - lastScrollDrivenChange < SCROLL_DRIVEN_LOCK_MS) return
+            if (activationMode() === 'card-center') {
+              activateClosestCardCenteredStep()
+              return
+            }
+
             let bestIndex = -1
             let bestDistance = Number.POSITIVE_INFINITY
 
@@ -250,10 +541,11 @@ export function useIoScroller(
               if (!e.isIntersecting) return
               const index = stepsEls.indexOf(e.target as HTMLElement)
               if (index === -1) return
+              if (isStepHiddenForViewport(e.target as HTMLElement, true)) return
 
               const rect = (e.target as HTMLElement).getBoundingClientRect()
               const center = rect.top + rect.height / 2
-              const desiredFraction = Math.max(0.0, Math.min(1.0, (flatSteps[index]?.article as any)?.triggerCenterFraction ?? 0.5))
+              const desiredFraction = Math.max(0.0, Math.min(1.0, (flatSteps[index]?.article as any)?.triggerCenterFraction ?? 0.7))
               const desiredY = window.innerHeight * desiredFraction
               const distance = Math.abs(center - desiredY)
               if (distance < bestDistance) {
@@ -263,14 +555,8 @@ export function useIoScroller(
             })
 
             if (bestIndex !== -1) {
-              activeStep.value = bestIndex
               if (snapAllowed.value && !disableSnap) snapThrottled(stepsEls[bestIndex] as HTMLElement)
-
-              nextTick(() => {
-                const { sceneIdx, localStep } = flatSteps[bestIndex]
-                const scene = scenes[sceneIdx]
-                ;(scene as any)?.visual?.onEnter?.({ step: localStep, ref: visualRefs[scene.key] })
-              })
+              activateStep(bestIndex)
             }
           },
           {
@@ -281,6 +567,11 @@ export function useIoScroller(
         )
 
         stepsEls.forEach((el) => io!.observe(el))
+        desktopScrollRoot = rootEl || window
+        if (activationMode() === 'card-center') {
+          desktopScrollRoot.addEventListener('scroll', onScrollDesktop, { passive: true })
+          onScrollDesktop()
+        }
       } else {
         addEventListener('scroll', onScrollMobile, { passive: true })
         onScrollMobile()
@@ -298,9 +589,10 @@ export function useIoScroller(
     mq?.removeEventListener('change', handleMediaChange)
     io?.disconnect()
     removeEventListener('scroll', onScrollMobile)
+    desktopScrollRoot?.removeEventListener('scroll', onScrollDesktop)
+    cancelAnimationFrame(rafDesktop)
     snapThrottled as any
   })
 
-  return { activeStep, stepsReady }
+  return { activeStep, stepsReady, getStepTargetIndex, resolveVisibleStepIndex, scrollToStepIndex }
 }
-
