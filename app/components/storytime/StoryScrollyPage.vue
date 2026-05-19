@@ -4,6 +4,13 @@ import type { StoryScene } from '../../types/storytime/scenes'
 import { useStepStructure } from '../../composables/storytime/useStepStructure'
 import { useIoScroller } from '../../composables/storytime/useIoScroller'
 import { useCssVarScroll } from '../../composables/storytime/useCssVarScroll'
+import {
+  isExplicitlyHiddenNarrativeScene,
+  isLegacyFullNarrativeScene,
+  isOverlayNarrativeChrome,
+  resolveNarrativeChromeForScene,
+  storyNarrativeCardCssVars,
+} from '../../utils/storytime/resolveNarrativeChrome'
 
 import ScrollVisual from './blocks/ScrollVisual.vue'
 import ArticleStep from './blocks/ArticleStep.vue'
@@ -72,6 +79,51 @@ const activeVisualRef = computed(() => {
 })
 
 const isFullLayout = computed(() => activeScene.value?.layout === 'full')
+
+const activeNarrativeChrome = computed(() => resolveNarrativeChromeForScene(activeScene.value))
+
+const activeNarrativeIsOverlay = computed(() => isOverlayNarrativeChrome(activeNarrativeChrome.value))
+
+const activeNarrativeExplicitlyHidden = computed(() => isExplicitlyHiddenNarrativeScene(activeScene.value))
+
+const activeNarrativeLegacyFull = computed(() => isLegacyFullNarrativeScene(activeScene.value))
+
+const articleClass = computed(() => {
+  const stateClass = stepsReady.value ? 'opacity-100' : 'opacity-0'
+
+  if (activeNarrativeExplicitlyHidden.value) {
+    return [
+      stateClass,
+      'hidden',
+    ]
+  }
+
+  if (activeNarrativeLegacyFull.value) {
+    return [
+      stateClass,
+      'w-full md:w-[40%] min-w-0 mx-auto md:mx-0 px-6 md:px-10 lg:px-16 pointer-events-none md:pointer-events-auto md:hidden',
+      effectivePanelScroll.value ? 'md:h-screen md:overflow-y-auto md:overscroll-contain' : '',
+    ]
+  }
+
+  if (activeNarrativeIsOverlay.value) {
+    return [
+      stateClass,
+      'storytime-article-column--overlay',
+      'md:absolute md:inset-0 md:z-30 md:w-full md:min-w-0 md:mx-0 md:px-8 lg:px-16 md:py-10 lg:py-16 md:border-l-0 md:bg-transparent md:pointer-events-none',
+      effectivePanelScroll.value ? 'md:h-screen md:overflow-y-auto md:overscroll-contain' : '',
+    ]
+  }
+
+  return [
+    stateClass,
+    'storytime-article-column--split',
+    'w-full md:w-[40%] min-w-0 mx-auto md:mx-0 px-6 md:px-10 lg:px-16 pointer-events-none md:pointer-events-auto z-10 lg:z-10 md:border-l',
+    effectivePanelScroll.value ? 'md:h-screen md:overflow-y-auto md:overscroll-contain' : '',
+  ]
+})
+
+const articleStyle = computed<Record<string, string>>(() => storyNarrativeCardCssVars(activeNarrativeChrome.value))
 
 const rootStyle = computed<Record<string, string>>(() => {
   const vars: Record<string, string> = {
@@ -147,7 +199,7 @@ watch(activeStep, () => {
     <section
       id="scrolly"
       ref="scrollyRootRef"
-      class="flex md:flex-row flex-col w-full min-w-0 bg-[var(--story-visual-bg)] text-[var(--story-visual-text)] [font-family:var(--story-font-body)]"
+      class="relative flex md:flex-row flex-col w-full min-w-0 bg-[var(--story-visual-bg)] text-[var(--story-visual-text)] [font-family:var(--story-font-body)]"
       :class="effectivePanelScroll ? 'md:h-screen md:items-stretch' : ''"
     >
       <ScrollVisual
@@ -161,15 +213,9 @@ watch(activeStep, () => {
 
       <article
         ref="stepsRootRef"
-        class="storytime-article-column w-full md:w-[40%] min-w-0 mx-auto md:mx-0 px-6 md:px-10 lg:px-16 transition-opacity duration-500 pointer-events-none md:pointer-events-auto md:border-l text-[var(--story-narrative-text)]"
-        :style="{ borderLeftColor: 'var(--story-divider)' }"
-        :class="[
-          { 'opacity-0': !stepsReady, 'opacity-100': stepsReady },
-          isFullLayout
-            ? 'md:hidden'
-            : 'pointer-events-none md:pointer-events-auto z-10 lg:z-10',
-          effectivePanelScroll ? 'md:h-screen md:overflow-y-auto md:overscroll-contain' : '',
-        ]"
+        class="storytime-article-column transition-opacity duration-500 text-[var(--story-narrative-text)]"
+        :style="articleStyle"
+        :class="articleClass"
       >
         <ArticleStep
           v-for="(step, i) in flatSteps"
@@ -177,6 +223,7 @@ watch(activeStep, () => {
           class="step flex items-start lg:items-center z-50"
           :data-scene-key="props.scenes[step.sceneIdx]?.key"
           :align="step.article.align || 'left'"
+          :chrome="resolveNarrativeChromeForScene(props.scenes[step.sceneIdx])"
         >
           <template v-if="step.article.blocks?.length">
             <template v-for="(b, bi) in step.article.blocks" :key="bi">
@@ -224,8 +271,12 @@ watch(activeStep, () => {
 }
 
 @media (min-width: 1024px) {
-  .storytime-article-column {
+  .storytime-article-column--split {
     background-color: var(--story-narrative-bg);
+  }
+
+  .storytime-article-column--overlay {
+    background-color: transparent;
   }
 }
 </style>
