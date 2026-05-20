@@ -82,10 +82,21 @@ export type StoryChapterNavBrandPresentation = {
   sceneKeys?: string[]
 }
 
+export type StoryChapterNavCtaPresentation = {
+  url?: string
+  label?: string
+  ariaLabel?: string
+  target?: '_blank' | '_self'
+  rel?: string
+  trackLabel?: string
+  trackModifier?: string
+}
+
 export type StoryChapterNavPresentation = {
   variant?: 'default' | 'we2'
   showToggle?: boolean
   brand?: StoryChapterNavBrandPresentation
+  cta?: StoryChapterNavCtaPresentation | null
   darkSceneKeys?: string[]
   jumpAlign?: 'center' | 'start'
   jumpTarget?: StoryScrollTarget
@@ -97,6 +108,12 @@ export type StoryScrollHintPresentation = {
   label?: string
   sceneKeys?: string[]
   fontFamily?: string
+  bottomOffsetPx?: number
+  responsiveBottomOffsetPx?: Array<{
+    minWidth?: number
+    maxWidth?: number
+    value: number
+  }>
 }
 
 export type StoryScrollPresentation = {

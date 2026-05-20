@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { StoryChapter, StoryChapterNavBrandPresentation } from '../../types/storytime/scenes'
+import type {
+  StoryChapter,
+  StoryChapterNavBrandPresentation,
+  StoryChapterNavCtaPresentation,
+} from '../../types/storytime/scenes'
 
 type ChapterLike = StoryChapter & {
   shortLabel?: string
@@ -16,6 +20,7 @@ const props = withDefaults(defineProps<{
   variant?: 'default' | 'we2'
   showToggle?: boolean
   brand?: StoryChapterNavBrandPresentation | null
+  cta?: StoryChapterNavCtaPresentation | null
   darkSceneKeys?: string[]
 }>(), {
   brandLabel: '',
@@ -23,6 +28,7 @@ const props = withDefaults(defineProps<{
   variant: 'default',
   showToggle: true,
   brand: null,
+  cta: null,
   darkSceneKeys: () => [],
 })
 
@@ -44,6 +50,32 @@ const brandPresentation = computed<StoryChapterNavBrandPresentation>(() => props
 const brandLabelText = computed(() => brandPresentation.value.label || props.brandLabel || '')
 const showBrand = computed(() => Boolean(brandLabelText.value || brandPresentation.value.variant))
 const showToggleControl = computed(() => props.showToggle !== false)
+const ctaPresentation = computed<StoryChapterNavCtaPresentation>(() => props.cta || {})
+const ctaUrl = computed(() => typeof ctaPresentation.value.url === 'string' ? ctaPresentation.value.url.trim() : '')
+const ctaLabel = computed(() => {
+  const label = ctaPresentation.value.label
+  return typeof label === 'string' && label.trim() ? label.trim() : 'Open link'
+})
+const ctaTarget = computed(() => ctaPresentation.value.target === '_self' ? '_self' : '_blank')
+const ctaAriaLabel = computed(() => {
+  const label = ctaPresentation.value.ariaLabel
+  return typeof label === 'string' && label.trim()
+    ? label.trim()
+    : `${ctaLabel.value}${ctaTarget.value === '_blank' ? ' (opens in new tab)' : ''}`
+})
+const ctaRel = computed(() => {
+  const rel = ctaPresentation.value.rel
+  if (typeof rel === 'string' && rel.trim()) return rel.trim()
+  return ctaTarget.value === '_blank' ? 'noopener noreferrer' : undefined
+})
+const ctaTrackLabel = computed(() => {
+  const label = ctaPresentation.value.trackLabel
+  return typeof label === 'string' && label.trim() ? label.trim() : 'chapter-nav-cta'
+})
+const ctaTrackModifier = computed(() => {
+  const modifier = ctaPresentation.value.trackModifier
+  return typeof modifier === 'string' && modifier.trim() ? modifier.trim() : 'cta'
+})
 
 function chapterSceneKeys(chapter: ChapterLike): string[] {
   if (Array.isArray(chapter.sceneKeys) && chapter.sceneKeys.length) {
@@ -266,6 +298,23 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </div>
+
+          <a
+            v-if="ctaUrl"
+            :href="ctaUrl"
+            :target="ctaTarget"
+            :rel="ctaRel"
+            class="story-chapter-nav__chip story-chapter-nav__cta story-chapter-nav__cta--rail"
+            data-au-track="chapter-nav"
+            :data-au-label="ctaTrackLabel"
+            :data-au-modifier="ctaTrackModifier"
+            :aria-label="ctaAriaLabel"
+          >
+            <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M9 2v9m0 0L5 7m4 4 4-4M3 14.5h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+          </a>
         </div>
 
         <button
@@ -291,6 +340,23 @@ onBeforeUnmount(() => {
             <path d="M4 6h12M4 10h12M4 14h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
           </svg>
         </button>
+
+        <a
+          v-if="ctaUrl"
+          :href="ctaUrl"
+          :target="ctaTarget"
+          :rel="ctaRel"
+          class="story-chapter-nav__chip story-chapter-nav__cta story-chapter-nav__cta--icon"
+          data-au-track="chapter-nav"
+          :data-au-label="ctaTrackLabel"
+          :data-au-modifier="ctaTrackModifier"
+          :aria-label="ctaAriaLabel"
+        >
+          <svg width="22" height="22" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M6 1v6.5m0 0L3.3 4.8m2.7 2.7 2.7-2.7M1.5 10h9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+        </a>
       </div>
     </nav>
   </Teleport>
@@ -552,6 +618,44 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 
+.story-chapter-nav--we2 .story-chapter-nav__cta {
+  background: #f5c84c;
+  color: #0c0a2e !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.story-chapter-nav--we2 .story-chapter-nav__cta:hover {
+  background: #ffd66a;
+}
+
+.story-chapter-nav--we2 .story-chapter-nav__cta-label {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.story-chapter-nav--we2 .story-chapter-nav__cta--rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+}
+
+.story-chapter-nav--we2 .story-chapter-nav__cta--icon {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.story-chapter-nav--we2 .story-chapter-nav__cta--icon .story-chapter-nav__cta-label {
+  display: none;
+}
+
 .story-chapter-nav--we2 .story-chapter-nav__menu {
   min-width: 220px;
   padding: 6px;
@@ -581,6 +685,10 @@ onBeforeUnmount(() => {
 @media (min-width: 1024px) {
   .story-chapter-nav--we2 .story-chapter-nav__toggle,
   .story-chapter-nav--we2 .story-chapter-nav__current {
+    display: none;
+  }
+
+  .story-chapter-nav--we2 .story-chapter-nav__cta--icon {
     display: none;
   }
 }
@@ -709,6 +817,18 @@ onBeforeUnmount(() => {
 
   .story-chapter-nav--we2 .story-chapter-nav__chapters .story-chapter-nav__chip {
     justify-content: center;
+  }
+
+  .story-chapter-nav--we2:not(.is-expanded) .story-chapter-nav__cta--rail {
+    display: none;
+  }
+
+  .story-chapter-nav--we2:not(.is-expanded) .story-chapter-nav__cta--icon {
+    display: inline-flex;
+  }
+
+  .story-chapter-nav--we2.is-expanded .story-chapter-nav__cta--icon {
+    display: none;
   }
 
   .story-chapter-nav--we2 .story-chapter-nav__mark {

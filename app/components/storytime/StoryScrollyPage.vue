@@ -42,6 +42,7 @@ const props = withDefaults(defineProps<{
 
 const scrollyRootRef = ref<HTMLElement | null>(null)
 const stepsRootRef = ref<HTMLElement | null>(null)
+const viewportWidth = ref(0)
 
 const effectivePanelScroll = computed(() => !!props.panelScroll)
 
@@ -100,6 +101,7 @@ const chapterNavPresentation = computed(() => props.presentation?.chapterNav || 
 const chapterNavVariant = computed(() => chapterNavPresentation.value.variant === 'we2' ? 'we2' : 'default')
 const chapterNavShowToggle = computed(() => chapterNavPresentation.value.showToggle !== false)
 const chapterNavBrand = computed(() => chapterNavPresentation.value.brand || null)
+const chapterNavCta = computed(() => chapterNavPresentation.value.cta || null)
 const chapterNavJumpAlign = computed(() => {
   return chapterNavPresentation.value.jumpAlign === 'start' ? 'start' : 'center'
 })
@@ -155,10 +157,32 @@ const scrollHintEnabled = computed(() => scrollHintPresentation.value.enabled ==
 const scrollHintVariant = computed(() => scrollHintPresentation.value.variant === 'we2' ? 'we2' : 'default')
 const scrollHintLabel = computed(() => scrollHintPresentation.value.label || 'Scroll down')
 const scrollHintStyle = computed<Record<string, string>>(() => {
+  const styles: Record<string, string> = {}
   const fontFamily = scrollHintPresentation.value.fontFamily
-  return typeof fontFamily === 'string' && fontFamily.trim()
-    ? { fontFamily }
-    : {}
+  if (typeof fontFamily === 'string' && fontFamily.trim()) {
+    styles.fontFamily = fontFamily
+  }
+
+  const bottomOffset = scrollHintPresentation.value.bottomOffsetPx
+  if (typeof bottomOffset === 'number' && Number.isFinite(bottomOffset)) {
+    styles['--story-scroll-hint-bottom'] = `${bottomOffset}px`
+  }
+
+  const responsiveBottomOffset = scrollHintPresentation.value.responsiveBottomOffsetPx
+  if (Array.isArray(responsiveBottomOffset)) {
+    const match = responsiveBottomOffset.find((entry) => {
+      if (!entry || typeof entry.value !== 'number' || !Number.isFinite(entry.value)) return false
+      if (!viewportWidth.value) return false
+      if (typeof entry.minWidth === 'number' && viewportWidth.value < entry.minWidth) return false
+      if (typeof entry.maxWidth === 'number' && viewportWidth.value > entry.maxWidth) return false
+      return true
+    })
+    if (match) {
+      styles['--story-scroll-hint-bottom'] = `${match.value}px`
+    }
+  }
+
+  return styles
 })
 const scrollHintSceneKeys = computed(() => {
   const sceneKeys = scrollHintPresentation.value.sceneKeys
@@ -174,6 +198,10 @@ const showScrollHint = computed(() => {
 })
 
 let viewportVarsCleanup: (() => void) | null = null
+
+function updateViewportWidth() {
+  viewportWidth.value = window.innerWidth
+}
 
 function isCssLengthLike(value: unknown): value is string {
   if (typeof value !== 'string') return false
@@ -429,11 +457,14 @@ watch(activeStep, () => {
 })
 
 onMounted(() => {
+  updateViewportWidth()
   installViewportVarListeners()
+  window.addEventListener('resize', updateViewportWidth, { passive: true })
   window.addEventListener('keydown', onStepKeydown)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateViewportWidth)
   window.removeEventListener('keydown', onStepKeydown)
   viewportVarsCleanup?.()
 })
@@ -453,6 +484,7 @@ onBeforeUnmount(() => {
         :variant="chapterNavVariant"
         :show-toggle="chapterNavShowToggle"
         :brand="chapterNavBrand"
+        :cta="chapterNavCta"
         :dark-scene-keys="chapterNavDarkSceneKeys"
         @jump="onChapterJump"
       />
@@ -578,7 +610,7 @@ onBeforeUnmount(() => {
   position: fixed;
   z-index: 40;
   left: 50%;
-  bottom: calc(160px + env(safe-area-inset-bottom, 0px) + min(var(--story-vv-bottom, 0px), 24px));
+  bottom: calc(var(--story-scroll-hint-bottom, 160px) + env(safe-area-inset-bottom, 0px) + min(var(--story-vv-bottom, 0px), 24px));
   display: inline-flex;
   pointer-events: none;
   transform: translateX(-50%);
