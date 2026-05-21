@@ -13,6 +13,7 @@ export type StoryArticleBlock =
 
 export type StoryVisual = {
   podSlug: string
+  version?: string
   props?: Record<string, any>
   disableParallax?: boolean
 }

@@ -116,6 +116,9 @@ function handleScroll(target: string) {
         v-if="cta.action === 'url'"
         :href="cta.target"
         :class="ctaClasses"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
       >
         {{ cta.label }}
       </a>
@@ -124,6 +127,9 @@ function handleScroll(target: string) {
         v-else-if="cta.action === 'modal'"
         type="button"
         :class="ctaClasses"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
         @click="open = true"
       >
         {{ cta.label }}
@@ -133,6 +139,9 @@ function handleScroll(target: string) {
         v-else
         type="button"
         :class="ctaClasses"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
         @click="handleScroll(cta.target)"
       >
         {{ cta.label }}

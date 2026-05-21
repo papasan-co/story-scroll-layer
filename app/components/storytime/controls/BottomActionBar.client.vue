@@ -11,7 +11,7 @@
  *
  * This intentionally removes partner-stories-only dependencies (analytics, ClapEmitter, Icon).
  */
-import { ref, onMounted, onBeforeUnmount, computed, unref, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, toRaw, unref, watch } from 'vue'
 
 const props = defineProps<{
   activeIndex: number
@@ -152,12 +152,19 @@ type ActiveVisualLike = {
 
 const active = computed(() => {
   const inst = unref(props.activeVisual as any) || null
-  return inst && inst.$?.exposed ? inst.$.exposed : inst
+  const rawInst = inst && typeof inst === 'object' ? toRaw(inst) : inst
+  const exposed = rawInst && (rawInst as any).$?.exposed ? (rawInst as any).$.exposed : rawInst
+  return exposed && typeof exposed === 'object' ? toRaw(exposed) : exposed
 })
 
 const hasVideo = computed(() => {
   const v = active.value
-  return props.showVideoControls !== false && !!(v && (v as any).__isHeroVideo === true)
+  return props.showVideoControls !== false && !!(v && (
+    (v as any).__isHeroVideo === true ||
+    (v as any).isPlaying ||
+    (v as any).isMuted ||
+    (typeof (v as any).play === 'function' && typeof (v as any).pause === 'function')
+  ))
 })
 
 const playing = ref(false)
@@ -288,6 +295,9 @@ onBeforeUnmount(() => {
         class="story-controls-btn inline-flex p-2 rounded-full disabled:opacity-40 transition-colors"
         :disabled="atFirst"
         aria-label="Previous"
+        data-au-track="story-control"
+        data-au-label="Previous"
+        data-au-modifier="previous"
         @click="go(-1)"
       >
         <svg v-if="controlsVariant === 'we2'" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -299,25 +309,55 @@ onBeforeUnmount(() => {
       <div class="story-controls-divider mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
 
       <template v-if="hasVideo">
-        <button class="story-controls-btn p-2 rounded-full transition-colors" :aria-label="playing ? 'Pause' : 'Play'" @click="togglePlay">
+        <button
+          class="story-controls-btn p-2 rounded-full transition-colors"
+          :aria-label="playing ? 'Pause' : 'Play'"
+          data-au-track="story-control"
+          :data-au-label="playing ? 'Pause' : 'Play'"
+          :data-au-modifier="playing ? 'pause' : 'play'"
+          @click="togglePlay"
+        >
           <svg v-if="playing" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
           <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         </button>
         <div class="mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
-        <button class="story-controls-btn p-2 rounded-full transition-colors" :aria-label="muted ? 'Sound off' : 'Sound on'" @click="toggleMute">
+        <button
+          class="story-controls-btn p-2 rounded-full transition-colors"
+          :aria-label="muted ? 'Sound off' : 'Sound on'"
+          data-au-track="story-control"
+          :data-au-label="muted ? 'Sound off' : 'Sound on'"
+          :data-au-modifier="muted ? 'unmute' : 'mute'"
+          @click="toggleMute"
+        >
           <svg v-if="muted" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
           <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M19 5a8 8 0 0 1 0 14"/><path d="M15 9a4 4 0 0 1 0 6"/></svg>
         </button>
         <div class="mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
       </template>
 
-      <button v-if="showShareControl" class="story-controls-btn p-2 rounded-full transition-colors" aria-label="Copy link" @click="copyLink">
+      <button
+        v-if="showShareControl"
+        class="story-controls-btn p-2 rounded-full transition-colors"
+        aria-label="Copy link"
+        data-au-track="story-control"
+        data-au-label="Copy link"
+        data-au-modifier="share"
+        @click="copyLink"
+      >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5"><path fill="currentColor" d="M10.59 13.41a1 1 0 0 0 1.41 1.41l4-4a1 1 0 1 0-1.41-1.41l-4 4ZM12.83 5.17a4 4 0 0 1 5.66 5.66l-1.41 1.41a1 1 0 0 1-1.41-1.41l1.41-1.41a2 2 0 0 0-2.83-2.83l-2 2a1 1 0 1 1-1.41-1.41l2-2ZM6.93 11.07a1 1 0 0 1 1.41 1.41l-1.41 1.41A2 2 0 0 0 9.76 17.1l2-2a1 1 0 1 1 1.41 1.41l-2 2a4 4 0 1 1-5.66-5.66l1.42-1.42Z"/></svg>
       </button>
 
       <div v-if="showShareControl" class="story-controls-divider mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
 
-      <button class="story-controls-btn inline-flex p-2 rounded-full transition-colors disabled:opacity-40" :disabled="atLast" aria-label="Next" @click="go(1)">
+      <button
+        class="story-controls-btn inline-flex p-2 rounded-full transition-colors disabled:opacity-40"
+        :disabled="atLast"
+        aria-label="Next"
+        data-au-track="story-control"
+        data-au-label="Next"
+        data-au-modifier="next"
+        @click="go(1)"
+      >
         <svg v-if="controlsVariant === 'we2'" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
