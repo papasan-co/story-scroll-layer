@@ -15,7 +15,9 @@ import type { StoryScene } from '../app/types/storytime/scenes'
 
 const scenes: StoryScene[] = [
   {
-    key: 'aaaaaaaa-1111-1111-1111-111111111111',
+    id: 'aaaaaaaa-1111-1111-1111-111111111111',
+    key: 'scene-one',
+    sourceKey: 'source-scene-one',
     layout: 'split',
     visual: { podSlug: 'hero', props: {} },
     articles: [
@@ -24,7 +26,9 @@ const scenes: StoryScene[] = [
     ],
   },
   {
-    key: 'bbbbbbbb-2222-2222-2222-222222222222',
+    id: 'bbbbbbbb-2222-2222-2222-222222222222',
+    key: 'scene-two',
+    sourceKey: 'source-scene-two',
     layout: 'split',
     visual: { podSlug: 'cta-panel', props: {} },
     articles: [
@@ -70,7 +74,9 @@ describe('StoryScrollyPage tracking attributes', () => {
     })
 
     const steps = wrapper.findAll('.step')
-    expect(steps[0].attributes('data-scene-key')).toBe('aaaaaaaa-1111-1111-1111-111111111111')
-    expect(steps[2].attributes('data-scene-key')).toBe('bbbbbbbb-2222-2222-2222-222222222222')
+    expect(steps[0].attributes('data-scene-key')).toBe('scene-one')
+    expect(steps[0].attributes('data-au-source-key')).toBe('source-scene-one')
+    expect(steps[2].attributes('data-scene-key')).toBe('scene-two')
+    expect(steps[2].attributes('data-au-source-key')).toBe('source-scene-two')
   })
 })

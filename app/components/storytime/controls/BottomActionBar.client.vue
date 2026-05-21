@@ -11,17 +11,32 @@
  *
  * This intentionally removes partner-stories-only dependencies (analytics, ClapEmitter, Icon).
  */
-import { ref, onMounted, onBeforeUnmount, computed, unref, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, toRaw, unref, watch } from 'vue'
 
 const props = defineProps<{
   activeIndex: number
   total: number
   activeVisual?: any
+  variant?: 'default' | 'minimal' | 'we2'
+  showShare?: boolean
+  showProgress?: boolean
+  showVideoControls?: boolean
+  hideOnMobileBelow?: number
+  bottomOffsetPx?: number
+  responsiveBottomOffsetPx?: Array<{
+    minWidth?: number
+    maxWidth?: number
+    value: number
+  }>
+  jumpAlign?: 'center' | 'start'
+  jumpTarget?: 'step' | 'card'
   /**
    * Optional: scope `.step` queries to a root element.
    */
   stepsRoot?: HTMLElement | null
   stepSelector?: string
+  stepTargetResolver?: (activeIndex: number, delta: number) => number | null
+  stepJumper?: (index: number, behavior: ScrollBehavior, direction: number) => boolean
   /**
    * Optional scroll container (panel-scroll mode).
    * When provided, navigation scrolls this container instead of the window.
@@ -30,12 +45,17 @@ const props = defineProps<{
 }>()
 
 const isMobile = ref(false)
+const viewportWidth = ref(0)
 const visible = ref(true)
 let lastScrollY = 0
 let scrollRaf = 0
 
 const updateIsMobile = () => {
-  isMobile.value = window.innerWidth < 1024
+  const threshold = typeof props.hideOnMobileBelow === 'number' && Number.isFinite(props.hideOnMobileBelow)
+    ? props.hideOnMobileBelow
+    : 1024
+  viewportWidth.value = window.innerWidth
+  isMobile.value = viewportWidth.value <= threshold
   if (!isMobile.value) visible.value = true
 }
 
@@ -62,8 +82,22 @@ async function copyLink() {
   }
 }
 
-const atFirst = computed(() => props.activeIndex <= 0)
-const atLast = computed(() => props.activeIndex >= props.total - 1)
+const previousTarget = computed(() => {
+  const resolved = props.stepTargetResolver?.(props.activeIndex, -1)
+  if (resolved === null) return props.activeIndex
+  return typeof resolved === 'number'
+    ? resolved
+    : Math.max(0, props.activeIndex - 1)
+})
+const nextTarget = computed(() => {
+  const resolved = props.stepTargetResolver?.(props.activeIndex, 1)
+  if (resolved === null) return props.activeIndex
+  return typeof resolved === 'number'
+    ? resolved
+    : Math.min(props.total - 1, props.activeIndex + 1)
+})
+const atFirst = computed(() => previousTarget.value === props.activeIndex || props.activeIndex <= 0)
+const atLast = computed(() => nextTarget.value === props.activeIndex || props.activeIndex >= props.total - 1)
 
 function stepElements(): HTMLElement[] {
   const sel = props.stepSelector || '.step'
@@ -73,26 +107,36 @@ function stepElements(): HTMLElement[] {
 }
 
 function scrollToStep(index: number) {
+  const direction = index < props.activeIndex ? -1 : 1
+  if (props.stepJumper?.(index, 'smooth', direction)) return
+
   const els = stepElements()
   const el = els[index]
   if (!el) return
-  const r = el.getBoundingClientRect()
+  const targetEl = props.jumpTarget === 'card'
+    ? el.querySelector<HTMLElement>('[data-article-card]') || el
+    : el
+  const r = targetEl.getBoundingClientRect()
 
   const root = props.scrollContainer ?? null
   if (root) {
     const rootRect = root.getBoundingClientRect()
     const offsetTop = r.top - rootRect.top
-    const target = root.scrollTop + offsetTop - (root.clientHeight / 2 - r.height / 2)
+    const target = props.jumpAlign === 'start'
+      ? root.scrollTop + offsetTop
+      : root.scrollTop + offsetTop - (root.clientHeight / 2 - r.height / 2)
     root.scrollTo({ top: target, behavior: 'smooth' })
     return
   }
 
-  const targetY = window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
+  const targetY = props.jumpAlign === 'start'
+    ? window.scrollY + r.top
+    : window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
   window.scrollTo({ top: targetY, behavior: 'smooth' })
 }
 
 function go(delta: number) {
-  const target = Math.min(props.total - 1, Math.max(0, props.activeIndex + delta))
+  const target = delta < 0 ? previousTarget.value : nextTarget.value
   if (target === props.activeIndex) return
   scrollToStep(target)
 }
@@ -108,12 +152,19 @@ type ActiveVisualLike = {
 
 const active = computed(() => {
   const inst = unref(props.activeVisual as any) || null
-  return inst && inst.$?.exposed ? inst.$.exposed : inst
+  const rawInst = inst && typeof inst === 'object' ? toRaw(inst) : inst
+  const exposed = rawInst && (rawInst as any).$?.exposed ? (rawInst as any).$.exposed : rawInst
+  return exposed && typeof exposed === 'object' ? toRaw(exposed) : exposed
 })
 
 const hasVideo = computed(() => {
   const v = active.value
-  return !!(v && (v as any).__isHeroVideo === true)
+  return props.showVideoControls !== false && !!(v && (
+    (v as any).__isHeroVideo === true ||
+    (v as any).isPlaying ||
+    (v as any).isMuted ||
+    (typeof (v as any).play === 'function' && typeof (v as any).pause === 'function')
+  ))
 })
 
 const playing = ref(false)
@@ -172,6 +223,39 @@ const progressPercent = computed(() => {
   const current = Math.min(total, Math.max(0, Number(props.activeIndex ?? 0) + 1))
   return Math.round((current / total) * 100)
 })
+const showShareControl = computed(() => props.showShare !== false)
+const showProgressControl = computed(() => props.showProgress !== false)
+const controlsVariant = computed(() => {
+  return props.variant === 'minimal' || props.variant === 'we2' ? props.variant : 'default'
+})
+const hideForViewport = computed(() => (
+  typeof props.hideOnMobileBelow === 'number' &&
+  Number.isFinite(props.hideOnMobileBelow) &&
+  isMobile.value
+))
+const responsiveBottomOffsetPx = computed(() => {
+  const width = viewportWidth.value
+  if (!width || !Array.isArray(props.responsiveBottomOffsetPx)) return undefined
+
+  const rule = props.responsiveBottomOffsetPx.find((entry) => {
+    if (!entry || typeof entry.value !== 'number' || !Number.isFinite(entry.value)) return false
+    const min = typeof entry.minWidth === 'number' && Number.isFinite(entry.minWidth) ? entry.minWidth : -Infinity
+    const max = typeof entry.maxWidth === 'number' && Number.isFinite(entry.maxWidth) ? entry.maxWidth : Infinity
+    return width >= min && width <= max
+  })
+
+  return rule ? rule.value : undefined
+})
+const rootStyle = computed<Record<string, string>>(() => {
+  const offset = responsiveBottomOffsetPx.value ?? props.bottomOffsetPx
+  if (typeof offset === 'number' && Number.isFinite(offset)) {
+    return {
+      bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + min(var(--story-vv-bottom, 0px), 24px))`,
+    }
+  }
+
+  return { bottom: '18px' }
+})
 
 onMounted(() => {
   updateIsMobile()
@@ -189,9 +273,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div
+    v-if="!hideForViewport"
     class="fixed left-1/2 -translate-x-1/2 z-[1000] transition-all duration-300"
     :class="[visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none']"
-    style="bottom: 18px;"
+    :style="rootStyle"
     aria-live="polite"
   >
     <div v-if="copied" class="mx-auto mb-2 w-max px-3 py-1 rounded-full text-xs bg-black/80 text-white text-center">
@@ -200,42 +285,86 @@ onBeforeUnmount(() => {
 
     <div
       class="story-controls-shell backdrop-blur-sm shadow-[0_6px_24px_rgba(0,0,0,.12)] rounded-full px-3 py-2 flex items-center gap-1 relative overflow-hidden"
+      :class="[
+        `story-controls-shell--${controlsVariant}`,
+        !showProgressControl ? 'story-controls-shell--no-progress' : '',
+      ]"
+      :data-au-controls-variant="controlsVariant"
     >
       <button
-        class="story-controls-btn hidden lg:inline-flex p-2 rounded-full disabled:opacity-40 transition-colors"
+        class="story-controls-btn inline-flex p-2 rounded-full disabled:opacity-40 transition-colors"
         :disabled="atFirst"
         aria-label="Previous"
+        data-au-track="story-control"
+        data-au-label="Previous"
+        data-au-modifier="previous"
         @click="go(-1)"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5"><path fill="currentColor" d="M12 7.5a1 1 0 0 1 .7.3l6 6a1 1 0 1 1-1.4 1.4L12 9.91l-5.3 5.29a1 1 0 1 1-1.4-1.42l6-6a1 1 0 0 1 .7-.28Z"/></svg>
+        <svg v-if="controlsVariant === 'we2'" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5"><path fill="currentColor" d="M12 7.5a1 1 0 0 1 .7.3l6 6a1 1 0 1 1-1.4 1.4L12 9.91l-5.3 5.29a1 1 0 1 1-1.4-1.42l6-6a1 1 0 0 1 .7-.28Z"/></svg>
       </button>
 
-      <div class="hidden lg:block mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
+      <div class="story-controls-divider mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
 
       <template v-if="hasVideo">
-        <button class="story-controls-btn p-2 rounded-full transition-colors" :aria-label="playing ? 'Pause' : 'Play'" @click="togglePlay">
+        <button
+          class="story-controls-btn p-2 rounded-full transition-colors"
+          :aria-label="playing ? 'Pause' : 'Play'"
+          data-au-track="story-control"
+          :data-au-label="playing ? 'Pause' : 'Play'"
+          :data-au-modifier="playing ? 'pause' : 'play'"
+          @click="togglePlay"
+        >
           <svg v-if="playing" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
           <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         </button>
         <div class="mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
-        <button class="story-controls-btn p-2 rounded-full transition-colors" :aria-label="muted ? 'Sound off' : 'Sound on'" @click="toggleMute">
+        <button
+          class="story-controls-btn p-2 rounded-full transition-colors"
+          :aria-label="muted ? 'Sound off' : 'Sound on'"
+          data-au-track="story-control"
+          :data-au-label="muted ? 'Sound off' : 'Sound on'"
+          :data-au-modifier="muted ? 'unmute' : 'mute'"
+          @click="toggleMute"
+        >
           <svg v-if="muted" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
           <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M19 5a8 8 0 0 1 0 14"/><path d="M15 9a4 4 0 0 1 0 6"/></svg>
         </button>
         <div class="mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
       </template>
 
-      <button class="story-controls-btn p-2 rounded-full transition-colors" aria-label="Copy link" @click="copyLink">
+      <button
+        v-if="showShareControl"
+        class="story-controls-btn p-2 rounded-full transition-colors"
+        aria-label="Copy link"
+        data-au-track="story-control"
+        data-au-label="Copy link"
+        data-au-modifier="share"
+        @click="copyLink"
+      >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5"><path fill="currentColor" d="M10.59 13.41a1 1 0 0 0 1.41 1.41l4-4a1 1 0 1 0-1.41-1.41l-4 4ZM12.83 5.17a4 4 0 0 1 5.66 5.66l-1.41 1.41a1 1 0 0 1-1.41-1.41l1.41-1.41a2 2 0 0 0-2.83-2.83l-2 2a1 1 0 1 1-1.41-1.41l2-2ZM6.93 11.07a1 1 0 0 1 1.41 1.41l-1.41 1.41A2 2 0 0 0 9.76 17.1l2-2a1 1 0 1 1 1.41 1.41l-2 2a4 4 0 1 1-5.66-5.66l1.42-1.42Z"/></svg>
       </button>
 
-      <div class="hidden lg:block mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
+      <div v-if="showShareControl" class="story-controls-divider mx-1 w-px h-6 bg-[var(--story-controls-divider)]" />
 
-      <button class="story-controls-btn hidden lg:inline-flex p-2 rounded-full transition-colors disabled:opacity-40" :disabled="atLast" aria-label="Next" @click="go(1)">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5 rotate-180"><path fill="currentColor" d="M12 7.5a1 1 0 0 1 .7.3l6 6a1 1 0 1 1-1.4 1.4L12 9.91l-5.3 5.29a1 1 0 1 1-1.4-1.42l6-6a1 1 0 0 1 .7-.28Z"/></svg>
+      <button
+        class="story-controls-btn inline-flex p-2 rounded-full transition-colors disabled:opacity-40"
+        :disabled="atLast"
+        aria-label="Next"
+        data-au-track="story-control"
+        data-au-label="Next"
+        data-au-modifier="next"
+        @click="go(1)"
+      >
+        <svg v-if="controlsVariant === 'we2'" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5 rotate-180"><path fill="currentColor" d="M12 7.5a1 1 0 0 1 .7.3l6 6a1 1 0 1 1-1.4 1.4L12 9.91l-5.3 5.29a1 1 0 1 1-1.4-1.42l6-6a1 1 0 0 1 .7-.28Z"/></svg>
       </button>
 
-      <div aria-hidden="true" class="pointer-events-none absolute left-2 right-2 bottom-0 h-1 rounded-full bg-[var(--story-controls-divider)] overflow-hidden">
+      <div v-if="showProgressControl" aria-hidden="true" class="pointer-events-none absolute left-2 right-2 bottom-0 h-1 rounded-full bg-[var(--story-controls-divider)] overflow-hidden">
         <div class="h-full" :style="{ width: progressPercent + '%', background: 'var(--story-controls-progress, var(--brand-primary, #007c7e))', transition: 'width 280ms ease' }" />
       </div>
     </div>
@@ -248,6 +377,44 @@ onBeforeUnmount(() => {
   color: var(--story-controls-text, #111111);
 }
 
+.story-controls-shell--minimal,
+.story-controls-shell--we2 {
+  padding: 4px;
+}
+
+.story-controls-shell--we2 {
+  background: var(--story-controls-bg, rgba(255, 255, 255, 0.78));
+  border: none;
+  box-shadow: 0 2px 12px rgba(12, 10, 46, 0.10);
+  backdrop-filter: blur(40px) saturate(140%);
+  -webkit-backdrop-filter: blur(40px) saturate(140%);
+  gap: 0;
+}
+
+.story-controls-shell--no-progress {
+  overflow: visible;
+}
+
+.story-controls-shell--minimal .story-controls-btn,
+.story-controls-shell--we2 .story-controls-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+}
+
+.story-controls-divider {
+  display: block;
+}
+
+.story-controls-shell--we2 .story-controls-divider {
+  height: 20px;
+  background: rgba(12, 10, 46, 0.12);
+  margin-inline: 0;
+}
+
 .story-controls-btn:hover {
   background: color-mix(in srgb, var(--story-controls-text, #111111) 10%, transparent);
 }
@@ -256,4 +423,3 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--story-controls-text, #111111) 16%, transparent);
 }
 </style>
-

@@ -62,11 +62,11 @@ function handleScroll(target: string) {
 </script>
 
 <template>
-  <div :class="['flex flex-col gap-4', align === 'center' && 'text-center', 'pointer-events-auto']">
+  <div :class="['article-copy-root flex flex-col gap-4', align === 'center' && 'text-center', 'pointer-events-auto']">
     <p
       v-if="pre"
       :class="[
-        'uppercase tracking-widest text-md font-semibold',
+        'ac-pre uppercase tracking-widest text-md font-semibold',
         preColor || 'text-[var(--story-narrative-text)]/65',
       ]"
     >
@@ -76,24 +76,24 @@ function handleScroll(target: string) {
     <h2
       v-if="title"
       :class="[
-        'text-xl lg:text-2xl font-semibold leading-tight [font-family:var(--story-font-heading)]',
+        'ac-title text-xl lg:text-2xl font-semibold leading-tight [font-family:var(--story-font-heading)]',
         titleColor || 'text-[var(--story-narrative-text)]',
       ]"
     >
       <span v-html="title" />
       <template v-if="highlight && highlightMode === 'line'">
         <br />
-        <span class="text-[var(--brand-primary)]" v-html="highlight" />
+        <span class="ac-highlight text-[var(--brand-primary)]" v-html="highlight" />
       </template>
       <template v-else-if="highlight && highlightMode === 'inline'">
-        <span class="text-[var(--brand-primary)]"> {{ highlight }}</span>
+        <span class="ac-highlight text-[var(--brand-primary)]"> {{ highlight }}</span>
       </template>
     </h2>
 
     <div
       v-for="(p, i) in paragraphs"
       :key="i"
-      class="storytime-copy-block text-lg text-[var(--story-narrative-text)]/85"
+      class="ac-body storytime-copy-block text-lg text-[var(--story-narrative-text)]/85"
       v-html="p"
     />
 
@@ -102,7 +102,7 @@ function handleScroll(target: string) {
       :href="refLink.url"
       target="_blank"
       rel="noopener noreferrer"
-      class="self-start inline-block text-xs text-[var(--story-narrative-text)]/75 rounded-full px-2 py-0.5 transition-colors duration-200"
+      class="ac-ref-link self-start inline-block text-xs text-[var(--story-narrative-text)]/75 rounded-full px-2 py-0.5 transition-colors duration-200"
       :style="{
         backgroundColor: 'color-mix(in srgb, var(--story-narrative-text) 8%, transparent)',
         border: '1px solid color-mix(in srgb, var(--story-narrative-text) 20%, transparent)',
@@ -116,6 +116,9 @@ function handleScroll(target: string) {
         v-if="cta.action === 'url'"
         :href="cta.target"
         :class="ctaClasses"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
       >
         {{ cta.label }}
       </a>
@@ -124,6 +127,9 @@ function handleScroll(target: string) {
         v-else-if="cta.action === 'modal'"
         type="button"
         :class="ctaClasses"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
         @click="open = true"
       >
         {{ cta.label }}
@@ -133,6 +139,9 @@ function handleScroll(target: string) {
         v-else
         type="button"
         :class="ctaClasses"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
         @click="handleScroll(cta.target)"
       >
         {{ cta.label }}

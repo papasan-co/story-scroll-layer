@@ -18,9 +18,195 @@ html:root { --mobile-step-height: 150svh; }
   .step [data-article-card] { pointer-events: auto; }
 }
 
-/* Ensure steps have scroll runway even if Tailwind scanning misses arbitrary utilities */
-.step { min-height: var(--mobile-step-height); }
-@media (min-width: 1024px) {
-  .step { min-height: 100vh; }
+@media (min-width: 1025px) {
+  .step[data-mobile-only="true"] {
+    display: none !important;
+  }
 }
 
+@media (max-width: 1024px) {
+  .step[data-desktop-only="true"] {
+    display: none !important;
+  }
+}
+
+/* Ensure steps have scroll runway even if Tailwind scanning misses arbitrary utilities */
+.step { min-height: var(--story-step-min-height, var(--mobile-step-height)); }
+
+/* Some coded-story presentations intentionally keep the full-screen visual
+ * frame and card runway through tablet widths instead of switching to the
+ * default md split pane. Apply that structural layout before breakpoint-
+ * specific card positioning so 768-1023px tablets do not fall into a 60/40
+ * split. */
+#scrolly[data-au-force-viewport-card-stack="true"] {
+  flex-direction: column !important;
+  overflow-x: clip;
+}
+
+#scrolly[data-au-force-viewport-card-stack="true"] > figure {
+  width: 100% !important;
+  min-width: 100% !important;
+  flex-basis: auto !important;
+}
+
+#scrolly[data-au-force-viewport-card-stack="true"] > .storytime-article-column {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex-basis: auto !important;
+  margin: 0 auto;
+  padding-right: 1rem !important;
+  padding-left: 1rem !important;
+  border-left: 0;
+  background: transparent;
+  pointer-events: none;
+  z-index: 30;
+}
+
+@media (min-width: 768px) {
+  #scrolly[data-au-force-viewport-card-stack="true"] > .storytime-article-column {
+    padding-right: 1.5rem !important;
+    padding-left: 1.5rem !important;
+  }
+}
+
+#scrolly[data-au-force-viewport-card-stack="true"] > .storytime-article-column .step {
+  min-height: var(--story-viewport-stack-step-height, var(--story-step-min-height, 90svh));
+  pointer-events: none;
+}
+
+#scrolly[data-au-force-viewport-card-stack="true"] > .storytime-article-column [data-article-card] {
+  pointer-events: auto;
+}
+
+#scrolly[data-au-force-viewport-card-stack="true"][data-au-card-mode="hidden"] > .storytime-article-column [data-article-card] {
+  visibility: visible;
+}
+
+@media (min-width: 1025px) {
+  .step { min-height: var(--story-step-min-height, 100vh); }
+
+  #scrolly[data-au-card-mode="overlay"] {
+    flex-direction: column !important;
+    overflow-x: clip;
+  }
+
+  #scrolly[data-au-card-mode="overlay"] > figure {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex-basis: auto !important;
+  }
+
+  #scrolly[data-au-card-mode="overlay"] > .storytime-article-column {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex-basis: auto !important;
+    margin: 0;
+    border-left: 0;
+    background: transparent;
+    pointer-events: none;
+    z-index: 30;
+  }
+
+  #scrolly[data-au-card-mode="overlay"] > .storytime-article-column .step {
+    position: relative;
+    align-items: stretch;
+    pointer-events: none;
+  }
+
+  #scrolly[data-au-card-mode="overlay"] > .storytime-article-column .step > div {
+    position: absolute;
+    top: 50%;
+    width: min(var(--story-overlay-card-width, 440px), var(--story-overlay-card-vw, 40vw), 90%);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  #scrolly[data-au-card-mode="overlay"][data-au-card-align="left"] > .storytime-article-column .step > div {
+    left: clamp(24px, 6vw, 120px);
+  }
+
+  #scrolly[data-au-card-mode="overlay"][data-au-card-align="center"] > .storytime-article-column .step > div {
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  #scrolly[data-au-card-mode="overlay"][data-au-card-align="right"] > .storytime-article-column .step > div {
+    right: clamp(24px, 6vw, 120px);
+  }
+
+  #scrolly[data-au-card-mode="overlay"] > .storytime-article-column [data-article-card] {
+    width: 100%;
+    pointer-events: auto;
+  }
+
+  #scrolly[data-au-card-mode="viewport-stack"] {
+    flex-direction: column !important;
+    overflow-x: clip;
+  }
+
+  #scrolly[data-au-card-mode="viewport-stack"] > figure {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex-basis: auto !important;
+  }
+
+  #scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex-basis: auto !important;
+    margin: 0 auto;
+    padding-right: 1.5rem;
+    padding-left: 1.5rem;
+    border-left: 0;
+    background: transparent;
+    pointer-events: none;
+    z-index: 30;
+  }
+
+  #scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column .step {
+    position: relative;
+    align-items: flex-start;
+    pointer-events: none;
+  }
+
+  #scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column [data-article-card] {
+    pointer-events: auto;
+  }
+
+  #scrolly[data-au-card-mode="hidden"] {
+    flex-direction: column !important;
+    overflow-x: clip;
+  }
+
+  #scrolly[data-au-card-mode="hidden"] > figure {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex-basis: auto !important;
+  }
+
+  #scrolly[data-au-card-mode="hidden"] > .storytime-article-column {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex-basis: auto !important;
+    margin: 0;
+    border-left: 0;
+    background: transparent;
+    pointer-events: none;
+    z-index: 30;
+  }
+
+  #scrolly[data-au-card-mode="hidden"] > .storytime-article-column .step {
+    position: relative;
+    align-items: stretch;
+    pointer-events: none;
+  }
+
+  #scrolly[data-au-card-mode="hidden"] > .storytime-article-column [data-article-card] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
