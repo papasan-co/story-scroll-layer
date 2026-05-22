@@ -52,6 +52,10 @@ const showBrand = computed(() => Boolean(brandLabelText.value || brandPresentati
 const showToggleControl = computed(() => props.showToggle !== false)
 const ctaPresentation = computed<StoryChapterNavCtaPresentation>(() => props.cta || {})
 const ctaUrl = computed(() => typeof ctaPresentation.value.url === 'string' ? ctaPresentation.value.url.trim() : '')
+const ctaDownloadFilename = computed(() => {
+  const filename = ctaPresentation.value.downloadFilename
+  return typeof filename === 'string' && filename.trim() ? filename.trim() : undefined
+})
 const ctaLabel = computed(() => {
   const label = ctaPresentation.value.label
   return typeof label === 'string' && label.trim() ? label.trim() : 'Open link'
@@ -304,6 +308,7 @@ onBeforeUnmount(() => {
             :href="ctaUrl"
             :target="ctaTarget"
             :rel="ctaRel"
+            :download="ctaDownloadFilename"
             class="story-chapter-nav__chip story-chapter-nav__cta story-chapter-nav__cta--rail"
             data-au-track="chapter-nav"
             :data-au-label="ctaTrackLabel"
@@ -346,14 +351,15 @@ onBeforeUnmount(() => {
           :href="ctaUrl"
           :target="ctaTarget"
           :rel="ctaRel"
+          :download="ctaDownloadFilename"
           class="story-chapter-nav__chip story-chapter-nav__cta story-chapter-nav__cta--icon"
           data-au-track="chapter-nav"
           :data-au-label="ctaTrackLabel"
           :data-au-modifier="ctaTrackModifier"
           :aria-label="ctaAriaLabel"
         >
-          <svg width="22" height="22" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M6 1v6.5m0 0L3.3 4.8m2.7 2.7 2.7-2.7M1.5 10h9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M6 1v6.5m0 0L3.3 4.8m2.7 2.7 2.7-2.7M1.5 10h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
         </a>
@@ -627,7 +633,7 @@ onBeforeUnmount(() => {
 }
 
 .story-chapter-nav--we2 .story-chapter-nav__cta:hover {
-  background: #ffd66a;
+  background: #ffd66a !important;
 }
 
 .story-chapter-nav--we2 .story-chapter-nav__cta-label {

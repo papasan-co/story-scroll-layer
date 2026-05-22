@@ -89,6 +89,7 @@ export type StoryChapterNavCtaPresentation = {
   ariaLabel?: string
   target?: '_blank' | '_self'
   rel?: string
+  downloadFilename?: string
   trackLabel?: string
   trackModifier?: string
 }

@@ -89,10 +89,37 @@ export function useIoScroller(
   let programmaticStepIndex: number | null = null
   let programmaticScrollUntil = 0
   let desktopScrollRoot: HTMLElement | Window | null = null
+  let resizeHandler: (() => void) | null = null
   const SCROLL_DRIVEN_LOCK_MS = 200
   const MOBILE_PREV_EXIT_PX = typeof options.mobilePrevExitPx === 'number'
     ? options.mobilePrevExitPx
     : 100
+  const PINCH_ZOOM_SCALE_THRESHOLD = 1.01
+  const RESIZE_LOCK_MS = 700
+  const RESIZE_WIDTH_DELTA = 40
+  const RESIZE_HEIGHT_DELTA = 120
+  let resizeLockUntil = 0
+  let lastSeenInnerWidth = typeof window !== 'undefined' ? window.innerWidth : 0
+  let lastSeenInnerHeight = typeof window !== 'undefined' ? window.innerHeight : 0
+
+  const isPinchZooming = () =>
+    typeof window !== 'undefined'
+    && window.visualViewport != null
+    && window.visualViewport.scale > PINCH_ZOOM_SCALE_THRESHOLD
+  const isResizeLocked = () => Date.now() < resizeLockUntil
+  const maybeLockOnResize = () => {
+    const width = window.innerWidth
+    const height = window.innerHeight
+    const widthDelta = Math.abs(width - lastSeenInnerWidth)
+    const heightDelta = Math.abs(height - lastSeenInnerHeight)
+
+    if (widthDelta >= RESIZE_WIDTH_DELTA || heightDelta >= RESIZE_HEIGHT_DELTA) {
+      resizeLockUntil = Date.now() + RESIZE_LOCK_MS
+    }
+
+    lastSeenInnerWidth = width
+    lastSeenInnerHeight = height
+  }
 
   const getSteps = (): HTMLElement[] => {
     const selector = options.stepSelector ?? '.step'
@@ -403,8 +430,12 @@ export function useIoScroller(
   // Mobile-only: activate step i when previous card bottom is at least MOBILE_PREV_EXIT_PX above top
   const onScrollMobile = () => {
     if (!isMobileSpacingMode()) return
+    if (isPinchZooming()) return
+    if (isResizeLocked()) return
     cancelAnimationFrame(raf)
     raf = requestAnimationFrame(() => {
+      if (isPinchZooming()) return
+      if (isResizeLocked()) return
       if (activationMode() === 'card-center') {
         activateClosestCardCenteredStep()
         return
@@ -437,6 +468,8 @@ export function useIoScroller(
   const activateClosestCardCenteredStep = () => {
     if (!stepsEls.length) return
     if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
+    if (isPinchZooming()) return
+    if (isResizeLocked()) return
 
     const rootEl = rootElement()
     const rootRect = rootEl?.getBoundingClientRect()
@@ -493,9 +526,13 @@ export function useIoScroller(
   const onScrollDesktop = () => {
     if (!isDesktopViewport()) return
     if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
+    if (isPinchZooming()) return
+    if (isResizeLocked()) return
 
     cancelAnimationFrame(rafDesktop)
     rafDesktop = requestAnimationFrame(() => {
+      if (isPinchZooming()) return
+      if (isResizeLocked()) return
       activateClosestCardCenteredStep()
     })
   }
@@ -529,6 +566,8 @@ export function useIoScroller(
               return
             }
             if (Date.now() - lastScrollDrivenChange < SCROLL_DRIVEN_LOCK_MS) return
+            if (isPinchZooming()) return
+            if (isResizeLocked()) return
             if (activationMode() === 'card-center') {
               activateClosestCardCenteredStep()
               return
@@ -578,14 +617,20 @@ export function useIoScroller(
       }
 
       handleResize()
-      window.addEventListener('resize', handleResize)
+      lastSeenInnerWidth = window.innerWidth
+      lastSeenInnerHeight = window.innerHeight
+      resizeHandler = () => {
+        maybeLockOnResize()
+        handleResize()
+      }
+      window.addEventListener('resize', resizeHandler)
 
       stepsReady.value = true
     })
   })
 
   onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleResize)
+    if (resizeHandler) window.removeEventListener('resize', resizeHandler)
     mq?.removeEventListener('change', handleMediaChange)
     io?.disconnect()
     removeEventListener('scroll', onScrollMobile)
