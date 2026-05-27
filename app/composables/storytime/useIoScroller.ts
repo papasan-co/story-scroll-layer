@@ -2,6 +2,7 @@ import { ref, onMounted, onBeforeUnmount, nextTick, type Ref } from 'vue'
 import type {
   FlatStoryStep,
   StoryActivationMode,
+  StoryJumpAlign,
   StoryScene,
   StoryScrollTarget,
 } from '../../types/storytime/scenes'
@@ -157,7 +158,7 @@ export function useIoScroller(
       : value && 'value' in value
         ? value.value
         : undefined
-    return resolved === 'card-center' ? 'card-center' : 'step-exit'
+    return resolved === 'card-center' || resolved === 'card-exit-next' ? resolved : 'step-exit'
   }
   const activationAnchor = () => {
     const value = options.activationAnchor
@@ -189,7 +190,16 @@ export function useIoScroller(
 
   const stepScrollElement = (stepEl: HTMLElement, target: StoryScrollTarget = scrollTarget()) => {
     if (target !== 'card') return stepEl
-    return stepEl.querySelector<HTMLElement>('[data-article-card]') || stepEl
+    const card = stepEl.querySelector<HTMLElement>('[data-article-card]')
+    if (!card) return stepEl
+
+    const viewportHeight = rootElement()?.clientHeight || window.innerHeight || 0
+    const cardRect = card.getBoundingClientRect()
+    if (viewportHeight > 0 && cardRect.height > viewportHeight * 0.9) {
+      return card.querySelector<HTMLElement>(':scope > .article-copy-root, :scope > *') || card
+    }
+
+    return card
   }
 
   const visibleStepIndexes = () => {
@@ -245,53 +255,63 @@ export function useIoScroller(
     index: number,
     behavior: ScrollBehavior = 'smooth',
     direction = index < activeStep.value ? -1 : 1,
-    align: 'center' | 'start' = 'center',
+    align: StoryJumpAlign = 'center',
     targetElement: StoryScrollTarget = scrollTarget(),
+    endOffsetPx = 0,
   ) => {
     const target = findVisibleStepIndex(index, direction)
     if (target === null) return false
 
-    refreshSteps()
-    const el = stepsEls[target]
-    if (!el) return false
-
     programmaticStepIndex = target
     programmaticScrollUntil = Date.now() + 900
-
-    const scrollEl = stepScrollElement(el, targetElement)
-    const r = scrollEl.getBoundingClientRect()
-    const shouldPeekCardFromBottom =
-      align === 'center' &&
-      targetElement === 'card' &&
-      window.matchMedia('(max-width: 1024px)').matches
-    const rootEl = rootElement()
-    if (rootEl) {
-      const rootRect = rootEl.getBoundingClientRect()
-      const offsetTop = r.top - rootRect.top
-      const nextTop = align === 'start'
-        ? rootEl.scrollTop + offsetTop
-        : shouldPeekCardFromBottom
-        ? rootEl.scrollTop + offsetTop - rootEl.clientHeight * 0.85
-        : rootEl.scrollTop + offsetTop - (rootEl.clientHeight / 2 - r.height / 2)
-      rootEl.scrollTo({ top: nextTop, behavior })
-    } else {
-      if (align === 'start' && targetElement === 'step') {
-        el.scrollIntoView({
-          block: 'start',
-          inline: 'nearest',
-          behavior,
-        })
-      } else {
-        const targetY = align === 'start'
-          ? window.scrollY + r.top
-          : shouldPeekCardFromBottom
-          ? window.scrollY + r.top - window.innerHeight * 0.85
-          : window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
-        window.scrollTo({ top: targetY, behavior })
-      }
-    }
-
     activateStep(target)
+
+    nextTick(() => {
+      refreshSteps()
+      const el = stepsEls[target]
+      if (!el) return
+
+      const scrollEl = stepScrollElement(el, targetElement)
+      const r = scrollEl.getBoundingClientRect()
+      const safeEndOffsetPx = typeof endOffsetPx === 'number' && Number.isFinite(endOffsetPx)
+        ? Math.max(0, endOffsetPx)
+        : 0
+      const shouldPeekCardFromBottom =
+        align === 'center' &&
+        targetElement === 'card' &&
+        window.matchMedia('(max-width: 1024px)').matches
+      const rootEl = rootElement()
+      if (rootEl) {
+        const rootRect = rootEl.getBoundingClientRect()
+        const offsetTop = r.top - rootRect.top
+        const nextTop = align === 'start'
+          ? rootEl.scrollTop + offsetTop
+          : align === 'end'
+          ? rootEl.scrollTop + offsetTop + r.height + safeEndOffsetPx - rootEl.clientHeight
+          : shouldPeekCardFromBottom
+          ? rootEl.scrollTop + offsetTop - rootEl.clientHeight * 0.85
+          : rootEl.scrollTop + offsetTop - (rootEl.clientHeight / 2 - r.height / 2)
+        rootEl.scrollTo({ top: nextTop, behavior })
+      } else {
+        if (align === 'start' && targetElement === 'step') {
+          el.scrollIntoView({
+            block: 'start',
+            inline: 'nearest',
+            behavior,
+          })
+        } else {
+          const targetY = align === 'start'
+            ? window.scrollY + r.top
+            : align === 'end'
+            ? window.scrollY + r.top + r.height + safeEndOffsetPx - window.innerHeight
+            : shouldPeekCardFromBottom
+            ? window.scrollY + r.top - window.innerHeight * 0.85
+            : window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
+          window.scrollTo({ top: targetY, behavior })
+        }
+      }
+    })
+
     window.setTimeout(() => {
       if (programmaticStepIndex !== target) return
       activateStep(target)
@@ -427,6 +447,48 @@ export function useIoScroller(
     })
   }
 
+  const activateCardExitNextStep = () => {
+    if (!stepsEls.length) return
+    if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
+    if (isPinchZooming()) return
+    if (isResizeLocked()) return
+
+    const rootEl = rootElement()
+    const rootRect = rootEl?.getBoundingClientRect()
+    const visibleIndexes = visibleStepIndexes()
+    let index = visibleIndexes[0] ?? 0
+
+    for (let i = 1; i < visibleIndexes.length; i++) {
+      const previousIndex = visibleIndexes[i - 1]
+      const currentIndex = visibleIndexes[i]
+      const prev = stepsEls[previousIndex]
+      const current = stepsEls[currentIndex]
+      if (!prev || !current) continue
+
+      const prevCard = stepScrollElement(prev, 'card')
+      const currentCard = stepScrollElement(current, 'card')
+      const prevRect = prevCard.getBoundingClientRect()
+      const currentRect = currentCard.getBoundingClientRect()
+      const prevBottom = rootRect ? prevRect.bottom - rootRect.top : prevRect.bottom
+      const currentTop = rootRect ? currentRect.top - rootRect.top : currentRect.top
+      const viewportHeight = rootEl?.clientHeight || window.innerHeight
+
+      if (prevBottom <= -MOBILE_PREV_EXIT_PX) {
+        index = currentIndex
+      } else if (currentTop < viewportHeight) {
+        index = currentIndex
+        break
+      } else {
+        break
+      }
+    }
+
+    if (index !== activeStep.value) {
+      lastScrollDrivenChange = Date.now()
+      activateStep(index)
+    }
+  }
+
   // Mobile-only: activate step i when previous card bottom is at least MOBILE_PREV_EXIT_PX above top
   const onScrollMobile = () => {
     if (!isMobileSpacingMode()) return
@@ -441,27 +503,7 @@ export function useIoScroller(
         return
       }
 
-      if (!stepsEls.length) return
-      const visibleIndexes = visibleStepIndexes()
-      let index = visibleIndexes[0] ?? 0
-
-      for (let i = 1; i < visibleIndexes.length; i++) {
-        const previousIndex = visibleIndexes[i - 1]
-        const currentIndex = visibleIndexes[i]
-        const prev = stepsEls[previousIndex]
-        const prevCard = prev.querySelector<HTMLElement>('[data-article-card]') || prev
-        const prevBottom = prevCard.getBoundingClientRect().bottom
-
-        if (prevBottom <= -MOBILE_PREV_EXIT_PX) {
-          index = currentIndex
-        } else {
-          break
-        }
-      }
-
-      if (index !== activeStep.value) {
-        activateStep(index)
-      }
+      activateCardExitNextStep()
     })
   }
 
@@ -533,7 +575,11 @@ export function useIoScroller(
     rafDesktop = requestAnimationFrame(() => {
       if (isPinchZooming()) return
       if (isResizeLocked()) return
-      activateClosestCardCenteredStep()
+      if (activationMode() === 'card-exit-next') {
+        activateCardExitNextStep()
+      } else {
+        activateClosestCardCenteredStep()
+      }
     })
   }
 
@@ -572,6 +618,10 @@ export function useIoScroller(
               activateClosestCardCenteredStep()
               return
             }
+            if (activationMode() === 'card-exit-next') {
+              activateCardExitNextStep()
+              return
+            }
 
             let bestIndex = -1
             let bestDistance = Number.POSITIVE_INFINITY
@@ -607,7 +657,7 @@ export function useIoScroller(
 
         stepsEls.forEach((el) => io!.observe(el))
         desktopScrollRoot = rootEl || window
-        if (activationMode() === 'card-center') {
+        if (activationMode() === 'card-center' || activationMode() === 'card-exit-next') {
           desktopScrollRoot.addEventListener('scroll', onScrollDesktop, { passive: true })
           onScrollDesktop()
         }

@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import type { StoryPresentation, StoryScene } from '../../types/storytime/scenes'
+import type {
+  StoryCardMode,
+  StoryChapterNavPresentation,
+  StoryControlsPresentation,
+  StoryJumpAlign,
+  StoryPresentation,
+  StoryScene,
+} from '../../types/storytime/scenes'
 import { useStepStructure } from '../../composables/storytime/useStepStructure'
 import { useIoScroller } from '../../composables/storytime/useIoScroller'
 import { useCssVarScroll } from '../../composables/storytime/useCssVarScroll'
+import { normalizeStoryPresentation } from '../../utils/storytime/presentation'
 
 import ScrollVisual from './blocks/ScrollVisual.vue'
 import ArticleStep from './blocks/ArticleStep.vue'
@@ -42,16 +50,19 @@ const props = withDefaults(defineProps<{
 
 const scrollyRootRef = ref<HTMLElement | null>(null)
 const stepsRootRef = ref<HTMLElement | null>(null)
-const viewportWidth = ref(0)
+const viewportWidth = ref(typeof window === 'undefined' ? 0 : window.innerWidth)
 
 const effectivePanelScroll = computed(() => !!props.panelScroll)
 
 const flatSteps = computed(() => useStepStructure(props.scenes))
 const visualRefs = reactive<Record<string, any>>({})
-const forceViewportCardStack = computed(() => props.scenes.some(scene => scene.cardMode === 'viewport-stack'))
-const scrollPresentation = computed(() => props.presentation?.scroll || {})
+const normalizedPresentation = computed(() => normalizeStoryPresentation(props.presentation))
+const scrollPresentation = computed(() => normalizedPresentation.value.scroll || {})
 const defaultJumpTarget = computed(() => scrollPresentation.value.jumpTarget === 'card' ? 'card' : 'step')
-const activationMode = computed(() => scrollPresentation.value.activationMode === 'card-center' ? 'card-center' : 'step-exit')
+const activationMode = computed(() => {
+  const mode = scrollPresentation.value.activationMode
+  return mode === 'card-center' || mode === 'card-exit-next' ? mode : 'step-exit'
+})
 const activationAnchor = computed(() => {
   const value = scrollPresentation.value.activationAnchor
   return typeof value === 'number' && Number.isFinite(value) ? value : 0.7
@@ -60,6 +71,35 @@ const activationHysteresisPx = computed(() => {
   const value = scrollPresentation.value.activationHysteresisPx
   return typeof value === 'number' && Number.isFinite(value) ? value : 24
 })
+
+function isStoryCardMode(value: unknown): value is StoryCardMode {
+  return value === 'side-by-side' || value === 'overlay' || value === 'viewport-stack' || value === 'hidden'
+}
+
+function sceneResponsiveBreakpoint(scene?: StoryScene) {
+  const value = scene?.responsiveBreakpoint
+  return typeof value === 'number' && Number.isFinite(value) ? value : 1024
+}
+
+function baseSceneCardMode(scene?: StoryScene): StoryCardMode {
+  if (isStoryCardMode(scene?.cardMode)) return scene.cardMode
+  return scene?.layout === 'full' ? 'hidden' : 'side-by-side'
+}
+
+function sceneCardMode(scene?: StoryScene): StoryCardMode {
+  if (!scene) return 'side-by-side'
+  if (
+    viewportWidth.value > 0 &&
+    viewportWidth.value <= sceneResponsiveBreakpoint(scene) &&
+    isStoryCardMode(scene.responsiveCardMode)
+  ) {
+    return scene.responsiveCardMode
+  }
+
+  return baseSceneCardMode(scene)
+}
+
+const forceViewportCardStack = computed(() => props.scenes.some(scene => sceneCardMode(scene) === 'viewport-stack'))
 
 const { activeStep, stepsReady, getStepTargetIndex, resolveVisibleStepIndex, scrollToStepIndex } = useIoScroller(flatSteps.value, props.scenes, visualRefs, {
   stepsRoot: stepsRootRef,
@@ -87,24 +127,34 @@ const activeVisualRef = computed(() => {
 })
 
 const isFullLayout = computed(() => activeScene.value?.layout === 'full')
-const activeCardMode = computed(() => activeScene.value?.cardMode ?? (isFullLayout.value ? 'hidden' : 'side-by-side'))
+const activeCardMode = computed(() => sceneCardMode(activeScene.value))
 const activeCardAlign = computed(() => activeScene.value?.cardAlign ?? 'right')
-const presentationChapters = computed(() => props.presentation?.chapters || [])
-const presentationNavMode = computed(() => String(props.presentation?.navMode || ''))
+const presentationChapters = computed(() => normalizedPresentation.value.chapters || [])
+const presentationNavMode = computed(() => String(normalizedPresentation.value.navMode || ''))
 const showChapterNav = computed(() => {
   if (!presentationChapters.value.length) return false
   const mode = presentationNavMode.value
   return !mode || mode === 'chapter-nav' || mode === 'both' || mode.split(/\s+/).includes('chapter-nav')
 })
 const activeNavSceneKey = computed(() => activeScene.value?.sourceKey || activeScene.value?.key || '')
-const chapterNavPresentation = computed(() => props.presentation?.chapterNav || {})
-const chapterNavVariant = computed(() => chapterNavPresentation.value.variant === 'we2' ? 'we2' : 'default')
+const chapterNavPresentation = computed(() => normalizedPresentation.value.chapterNav || {})
+const chapterNavChromeMode = computed(() => chapterNavPresentation.value.chromeMode === 'floating-rail' ? 'floating-rail' : 'default')
 const chapterNavShowToggle = computed(() => chapterNavPresentation.value.showToggle !== false)
-const chapterNavBrand = computed(() => chapterNavPresentation.value.brand || null)
-const chapterNavCta = computed(() => chapterNavPresentation.value.cta || null)
-const chapterNavJumpAlign = computed(() => {
-  return chapterNavPresentation.value.jumpAlign === 'start' ? 'start' : 'center'
+const chapterNavInactiveLabel = computed(() => {
+  const label = chapterNavPresentation.value.inactiveLabel
+  return typeof label === 'string' && label.trim() ? label.trim() : ''
 })
+const chapterNavInactiveBehavior = computed(() => {
+  return chapterNavPresentation.value.inactiveBehavior === 'first-chapter' ? 'first-chapter' : 'none'
+})
+const chapterNavBrand = computed(() => chapterNavPresentation.value.brand || null)
+const chapterNavBrandMode = computed(() => {
+  const value = chapterNavPresentation.value.brandMode
+  return value === 'text' || value === 'image' || value === 'mark' || value === 'none' ? value : undefined
+})
+const chapterNavCta = computed(() => chapterNavPresentation.value.cta || null)
+const chapterNavJumpAlign = computed(() => resolveJumpAlign(chapterNavPresentation.value))
+const chapterNavJumpEndOffsetPx = computed(() => resolveJumpEndOffsetPx(chapterNavPresentation.value))
 const chapterNavJumpTarget = computed(() => {
   return chapterNavPresentation.value.jumpTarget === 'card' ? 'card' : defaultJumpTarget.value
 })
@@ -115,18 +165,15 @@ const chapterNavDarkSceneKeys = computed(() => {
     : []
 })
 const chapterNavBrandLabel = computed(() => {
-  const presentation = props.presentation as Record<string, any> | null
+  const presentation = normalizedPresentation.value as Record<string, any> | null
   return presentation?.brandLabel || presentation?.navBrandLabel || ''
 })
 const chapterNavAriaLabel = computed(() => {
-  const presentation = props.presentation as Record<string, any> | null
+  const presentation = normalizedPresentation.value as Record<string, any> | null
   return presentation?.navAriaLabel || 'Story chapters'
 })
-const controlsPresentation = computed(() => props.presentation?.controls || {})
-const controlsVariant = computed(() => {
-  const variant = controlsPresentation.value.variant
-  return variant === 'minimal' || variant === 'we2' ? variant : 'default'
-})
+const controlsPresentation = computed(() => normalizedPresentation.value.controls || {})
+const controlsMode = computed(() => controlsPresentation.value.controlMode || 'default')
 const controlsShowShare = computed(() => controlsPresentation.value.showShare !== false)
 const controlsShowProgress = computed(() => controlsPresentation.value.showProgress !== false)
 const controlsShowVideoControls = computed(() => controlsPresentation.value.showVideoControls !== false)
@@ -135,6 +182,7 @@ const controlsHideOnMobileBelow = computed(() => {
   const value = controlsPresentation.value.hideOnMobileBelow
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 })
+const controlsAutoHideOnMobile = computed(() => controlsPresentation.value.autoHideOnMobile !== false)
 const controlsBottomOffsetPx = computed(() => {
   const value = controlsPresentation.value.bottomOffsetPx
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
@@ -143,18 +191,18 @@ const controlsResponsiveBottomOffsetPx = computed(() => {
   const value = controlsPresentation.value.responsiveBottomOffsetPx
   return Array.isArray(value) ? value : undefined
 })
-const controlsJumpAlign = computed(() => {
-  return controlsPresentation.value.jumpAlign === 'start' ? 'start' : 'center'
-})
+const controlsMobileCta = computed(() => controlsPresentation.value.mobileCta || null)
+const controlsJumpAlign = computed(() => resolveJumpAlign(controlsPresentation.value))
+const controlsJumpEndOffsetPx = computed(() => resolveJumpEndOffsetPx(controlsPresentation.value))
 const controlsJumpTarget = computed(() => {
   return controlsPresentation.value.jumpTarget === 'card' ? 'card' : defaultJumpTarget.value
 })
 const visualTransitionMode = computed(() => {
-  return props.presentation?.visualTransitionMode === 'cross-reveal' ? 'cross-reveal' : 'fade'
+  return normalizedPresentation.value.visualTransitionMode === 'cross-reveal' ? 'cross-reveal' : 'fade'
 })
-const scrollHintPresentation = computed(() => props.presentation?.scrollHint || {})
+const scrollHintPresentation = computed(() => normalizedPresentation.value.scrollHint || {})
 const scrollHintEnabled = computed(() => scrollHintPresentation.value.enabled === true)
-const scrollHintVariant = computed(() => scrollHintPresentation.value.variant === 'we2' ? 'we2' : 'default')
+const scrollHintMode = computed(() => scrollHintPresentation.value.mode === 'corner' ? 'corner' : 'default')
 const scrollHintLabel = computed(() => scrollHintPresentation.value.label || 'Scroll down')
 const scrollHintStyle = computed<Record<string, string>>(() => {
   const styles: Record<string, string> = {}
@@ -225,6 +273,39 @@ function articleHasContent(article: StoryScene['articles'][number]): boolean {
   return blocks.some(block => hasRenderableValue(block.props))
 }
 
+function isJumpAlign(value: unknown): value is StoryJumpAlign {
+  return value === 'center' || value === 'start' || value === 'end'
+}
+
+function responsiveRuleMatches(rule: { minWidth?: number; maxWidth?: number } | null | undefined) {
+  if (!rule || !viewportWidth.value) return false
+  if (typeof rule.minWidth === 'number' && Number.isFinite(rule.minWidth) && viewportWidth.value < rule.minWidth) return false
+  if (typeof rule.maxWidth === 'number' && Number.isFinite(rule.maxWidth) && viewportWidth.value > rule.maxWidth) return false
+  return true
+}
+
+function resolveJumpAlign(presentation: StoryControlsPresentation | StoryChapterNavPresentation): StoryJumpAlign {
+  const responsive = presentation.responsiveJumpAlign
+  if (Array.isArray(responsive)) {
+    const match = responsive.find(rule => responsiveRuleMatches(rule) && isJumpAlign(rule.value))
+    if (match) return match.value
+  }
+
+  return isJumpAlign(presentation.jumpAlign) ? presentation.jumpAlign : 'center'
+}
+
+function resolveJumpEndOffsetPx(presentation: StoryControlsPresentation | StoryChapterNavPresentation) {
+  const responsive = presentation.responsiveJumpEndOffsetPx
+  if (Array.isArray(responsive)) {
+    const match = responsive.find(rule => responsiveRuleMatches(rule) && typeof rule.value === 'number' && Number.isFinite(rule.value))
+    if (match) return Math.max(0, match.value)
+  }
+
+  return typeof presentation.jumpEndOffsetPx === 'number' && Number.isFinite(presentation.jumpEndOffsetPx)
+    ? Math.max(0, presentation.jumpEndOffsetPx)
+    : 0
+}
+
 const rootStyle = computed<Record<string, string>>(() => {
   const vars: Record<string, string> = {
     '--brand-primary': props.brandColor,
@@ -244,8 +325,6 @@ const rootStyle = computed<Record<string, string>>(() => {
     '--story-controls-text': 'var(--story-visual-text, #111111)',
     '--story-controls-divider': 'color-mix(in srgb, var(--story-controls-text, #111111) 18%, transparent)',
     '--story-controls-progress': 'var(--story-accent, var(--brand-primary, #007c7e))',
-    '--story-font-heading': 'inherit',
-    '--story-font-body': 'inherit',
     // Legacy aliases.
     '--story-bg': '#ffffff',
     '--story-text': '#111111',
@@ -347,7 +426,14 @@ function onChapterJump(sceneKeys: string[]) {
 
   const jumpId = ++chapterJumpId
   const direction = target < activeStep.value ? -1 : 1
-  scrollToStepIndex(target, 'auto', direction, chapterNavJumpAlign.value, chapterNavJumpTarget.value)
+  scrollToStepIndex(
+    target,
+    'auto',
+    direction,
+    chapterNavJumpAlign.value,
+    chapterNavJumpTarget.value,
+    chapterNavJumpEndOffsetPx.value,
+  )
 
   if (chapterNavJumpTarget.value === 'card' || chapterNavJumpAlign.value !== 'start') return
 
@@ -373,11 +459,25 @@ function isTypingTarget(target: EventTarget | null): boolean {
 function navigateStep(delta: number, behavior: ScrollBehavior = 'smooth') {
   const target = getStepTargetIndex(activeStep.value, delta)
   if (target === null || target === activeStep.value) return false
-  return scrollToStepIndex(target, behavior, delta, controlsJumpAlign.value, controlsJumpTarget.value)
+  return scrollToStepIndex(
+    target,
+    behavior,
+    delta,
+    controlsJumpAlign.value,
+    controlsJumpTarget.value,
+    controlsJumpEndOffsetPx.value,
+  )
 }
 
 function jumpFromControls(index: number, behavior: ScrollBehavior, direction: number) {
-  return scrollToStepIndex(index, behavior, direction, controlsJumpAlign.value, controlsJumpTarget.value)
+  return scrollToStepIndex(
+    index,
+    behavior,
+    direction,
+    controlsJumpAlign.value,
+    controlsJumpTarget.value,
+    controlsJumpEndOffsetPx.value,
+  )
 }
 
 function onStepKeydown(event: KeyboardEvent) {
@@ -481,9 +581,12 @@ onBeforeUnmount(() => {
         :active-scene-key="activeNavSceneKey"
         :brand-label="chapterNavBrandLabel"
         :aria-label="chapterNavAriaLabel"
-        :variant="chapterNavVariant"
+        :chrome-mode="chapterNavChromeMode"
         :show-toggle="chapterNavShowToggle"
+        :inactive-label="chapterNavInactiveLabel"
+        :inactive-behavior="chapterNavInactiveBehavior"
         :brand="chapterNavBrand"
+        :brand-mode="chapterNavBrandMode"
         :cta="chapterNavCta"
         :dark-scene-keys="chapterNavDarkSceneKeys"
         @jump="onChapterJump"
@@ -493,11 +596,12 @@ onBeforeUnmount(() => {
     <ClientOnly v-if="showScrollHint">
       <div
         class="story-scroll-hint"
-        :class="`story-scroll-hint--${scrollHintVariant}`"
+        :class="`story-scroll-hint--${scrollHintMode}`"
+        :data-story-scroll-hint="scrollHintMode"
         :style="scrollHintStyle"
         aria-hidden="true"
       >
-        <template v-if="scrollHintVariant === 'we2'">
+        <template v-if="scrollHintMode === 'corner'">
           <span class="story-scroll-hint__mouse" aria-hidden="true">
             <span class="story-scroll-hint__wheel" />
           </span>
@@ -572,18 +676,21 @@ onBeforeUnmount(() => {
           :active-index="activeStep"
           :total="flatSteps.length"
           :active-visual="activeVisualRef"
-          :variant="controlsVariant"
+          :control-mode="controlsMode"
           :show-share="controlsShowShare"
           :show-progress="controlsShowProgress"
           :show-video-controls="controlsShowVideoControls"
           :hide-on-mobile-below="controlsHideOnMobileBelow"
+          :auto-hide-on-mobile="controlsAutoHideOnMobile"
           :bottom-offset-px="controlsBottomOffsetPx"
           :responsive-bottom-offset-px="controlsResponsiveBottomOffsetPx"
+          :mobile-cta="controlsMobileCta"
           :steps-root="stepsRootRef"
           step-selector=".step"
           :step-target-resolver="getStepTargetIndex"
           :scroll-container="effectivePanelScroll ? stepsRootRef : null"
           :jump-align="controlsJumpAlign"
+          :jump-end-offset-px="controlsJumpEndOffsetPx"
           :jump-target="controlsJumpTarget"
           :step-jumper="jumpFromControls"
         />
@@ -616,12 +723,11 @@ onBeforeUnmount(() => {
   transform: translateX(-50%);
 }
 
-.story-scroll-hint--we2 {
+.story-scroll-hint--corner {
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  color: #f2f4f8;
   opacity: 0.9;
   animation: storyWe2CueNudge 2.1s ease-in-out infinite;
 }
@@ -632,7 +738,7 @@ onBeforeUnmount(() => {
   width: 18px;
   height: 26px;
   padding-top: 4px;
-  border: 2px solid rgba(242, 244, 248, 0.85);
+  border: 2px solid currentColor;
   border-radius: 12px;
 }
 
@@ -640,7 +746,7 @@ onBeforeUnmount(() => {
   width: 3px;
   height: 7px;
   border-radius: 2px;
-  background: #f2f4f8;
+  background: currentColor;
   animation: storyWe2CueWheel 1.2s ease-in-out infinite;
 }
 

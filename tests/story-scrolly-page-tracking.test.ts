@@ -8,7 +8,7 @@
  * multiple narrative beats — the tracker is responsible for deduping
  * by id within a session, not the layer.
  */
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import StoryScrollyPage from '../app/components/storytime/StoryScrollyPage.vue'
 import type { StoryScene } from '../app/types/storytime/scenes'
@@ -37,7 +37,79 @@ const scenes: StoryScene[] = [
   },
 ]
 
+afterEach(() => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 })
+})
+
 describe('StoryScrollyPage tracking attributes', () => {
+  it('passes responsive jump alignment to the controls chrome', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 834 })
+
+    const wrapper = mount(StoryScrollyPage, {
+      props: {
+        scenes,
+        presentation: {
+          controls: {
+            jumpAlign: 'center',
+            responsiveJumpAlign: [{ maxWidth: 1100, value: 'end' }],
+            responsiveJumpEndOffsetPx: [{ maxWidth: 1100, value: 96 }],
+            jumpTarget: 'card',
+          },
+        },
+      },
+      global: {
+        stubs: {
+          ScrollVisual: { template: '<div><slot /></div>' },
+          BottomActionBar: {
+            props: ['jumpAlign', 'jumpEndOffsetPx', 'jumpTarget'],
+            template: '<div data-testid="bottom-action-bar" :data-jump-align="jumpAlign" :data-jump-end-offset-px="jumpEndOffsetPx" :data-jump-target="jumpTarget" />',
+          },
+          ClientOnly: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    const actionBar = wrapper.get('[data-testid="bottom-action-bar"]')
+    expect(actionBar.attributes('data-jump-align')).toBe('end')
+    expect(actionBar.attributes('data-jump-end-offset-px')).toBe('96')
+    expect(actionBar.attributes('data-jump-target')).toBe('card')
+  })
+
+  it('switches to viewport-stack card mode through generic responsive metadata', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 900 })
+
+    const wrapper = mount(StoryScrollyPage, {
+      props: {
+        scenes: [
+          {
+            id: 'cccccccc-3333-3333-3333-333333333333',
+            key: 'responsive-scene',
+            layout: 'split',
+            cardMode: 'side-by-side',
+            responsiveCardMode: 'viewport-stack',
+            responsiveBreakpoint: 1100,
+            visual: { podSlug: 'responsive-visual', props: {} },
+            articles: [
+              { align: 'right', blocks: [{ type: 'copy', props: { paragraphs: ['Responsive paragraph'] } }] },
+            ],
+          },
+        ],
+        controls: false,
+      },
+      global: {
+        stubs: {
+          ScrollVisual: { template: '<div><slot /></div>' },
+          BottomActionBar: { template: '<div />' },
+          ClientOnly: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    const scrolly = wrapper.get('#scrolly')
+    expect(scrolly.attributes('data-au-card-mode')).toBe('viewport-stack')
+    expect(scrolly.attributes('data-au-force-viewport-card-stack')).toBe('true')
+  })
+
   it('emits data-au-scene-id and data-au-scene-index on every step', () => {
     const wrapper = mount(StoryScrollyPage, {
       props: { scenes, controls: false },

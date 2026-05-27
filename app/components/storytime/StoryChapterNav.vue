@@ -2,7 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type {
   StoryChapter,
+  StoryChapterNavBrandMode,
   StoryChapterNavBrandPresentation,
+  StoryChapterNavChromeMode,
   StoryChapterNavCtaPresentation,
 } from '../../types/storytime/scenes'
 
@@ -17,16 +19,27 @@ const props = withDefaults(defineProps<{
   activeSceneKey: string
   brandLabel?: string
   ariaLabel?: string
+  chromeMode?: StoryChapterNavChromeMode
+  brandMode?: StoryChapterNavBrandMode
+  /**
+   * @deprecated Use chromeMode. Existing WE-2 payloads may still send variant=we2.
+   */
   variant?: 'default' | 'we2'
   showToggle?: boolean
+  inactiveLabel?: string
+  inactiveBehavior?: 'none' | 'first-chapter'
   brand?: StoryChapterNavBrandPresentation | null
   cta?: StoryChapterNavCtaPresentation | null
   darkSceneKeys?: string[]
 }>(), {
   brandLabel: '',
   ariaLabel: 'Story chapters',
+  chromeMode: 'default',
+  brandMode: undefined,
   variant: 'default',
   showToggle: true,
+  inactiveLabel: '',
+  inactiveBehavior: 'none',
   brand: null,
   cta: null,
   darkSceneKeys: () => [],
@@ -41,14 +54,31 @@ const openMenuId = ref<string | null>(null)
 const rootEl = ref<HTMLElement | null>(null)
 
 const normalizedChapters = computed(() => props.chapters || [])
-const navVariant = computed(() => props.variant === 'we2' ? 'we2' : 'default')
+const navChromeMode = computed<StoryChapterNavChromeMode>(() => {
+  if (props.chromeMode === 'floating-rail') return 'floating-rail'
+  return props.variant === 'we2' ? 'floating-rail' : 'default'
+})
 const sceneTheme = computed<'light' | 'dark'>(() => {
-  if (navVariant.value !== 'we2') return 'light'
   return props.darkSceneKeys.includes(props.activeSceneKey) ? 'dark' : 'light'
 })
 const brandPresentation = computed<StoryChapterNavBrandPresentation>(() => props.brand || {})
 const brandLabelText = computed(() => brandPresentation.value.label || props.brandLabel || '')
-const showBrand = computed(() => Boolean(brandLabelText.value || brandPresentation.value.variant))
+const brandLogoUrl = computed(() => {
+  const url = brandPresentation.value.logoUrl
+  return typeof url === 'string' && url.trim() ? url.trim() : ''
+})
+const brandMobileLogoUrl = computed(() => {
+  const url = brandPresentation.value.mobileLogoUrl
+  return typeof url === 'string' && url.trim() ? url.trim() : ''
+})
+const brandMode = computed<StoryChapterNavBrandMode>(() => {
+  const requested = brandPresentation.value.mode || props.brandMode || brandPresentation.value.variant
+  if (requested === 'we2-mark') return 'mark'
+  if (requested === 'text' || requested === 'image' || requested === 'mark' || requested === 'none') return requested
+  if (brandLogoUrl.value || brandMobileLogoUrl.value) return 'image'
+  return brandLabelText.value ? 'text' : 'none'
+})
+const showBrand = computed(() => brandMode.value !== 'none' && Boolean(brandLabelText.value || brandLogoUrl.value || brandMobileLogoUrl.value || brandMode.value === 'mark'))
 const showToggleControl = computed(() => props.showToggle !== false)
 const ctaPresentation = computed<StoryChapterNavCtaPresentation>(() => props.cta || {})
 const ctaUrl = computed(() => typeof ctaPresentation.value.url === 'string' ? ctaPresentation.value.url.trim() : '')
@@ -101,10 +131,16 @@ function containsScene(chapter: ChapterLike, sceneKey: string): boolean {
 
 const activeIndex = computed(() => {
   const index = normalizedChapters.value.findIndex(chapter => containsScene(chapter, props.activeSceneKey))
-  return index === -1 ? 0 : index
+  if (index >= 0) return index
+  return props.inactiveBehavior === 'first-chapter' && normalizedChapters.value.length ? 0 : -1
 })
 
-const activeChapter = computed(() => normalizedChapters.value[activeIndex.value])
+const activeChapter = computed(() => activeIndex.value >= 0 ? normalizedChapters.value[activeIndex.value] : undefined)
+const currentLabel = computed(() => {
+  if (activeChapter.value) return chapterLabel(activeChapter.value)
+  return typeof props.inactiveLabel === 'string' ? props.inactiveLabel.trim() : ''
+})
+const currentTrackLabel = computed(() => activeChapter.value?.id || currentLabel.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
 
 function jumpTo(chapter: ChapterLike) {
   const sceneKeys = chapterSceneKeys(chapter)
@@ -125,6 +161,20 @@ function onChapterClick(chapter: ChapterLike) {
   }
 
   jumpTo(chapter)
+}
+
+function onCurrentClick() {
+  if (activeChapter.value) {
+    jumpTo(activeChapter.value)
+    return
+  }
+
+  if (showToggleControl.value) {
+    toggleExpanded()
+    return
+  }
+
+  onBrandClick()
 }
 
 function onBrandClick() {
@@ -197,25 +247,44 @@ onBeforeUnmount(() => {
       ref="rootEl"
       class="story-chapter-nav"
       :class="[
-        `story-chapter-nav--${navVariant}`,
+        `story-chapter-nav--${navChromeMode}`,
         `story-chapter-nav--${sceneTheme}`,
         { 'is-expanded': expanded },
       ]"
+      data-story-chapter-nav
+      :data-story-chapter-chrome-mode="navChromeMode"
+      :data-story-chapter-theme="sceneTheme"
       :aria-label="ariaLabel"
     >
       <div class="story-chapter-nav__bar">
         <button
           v-if="showBrand"
           type="button"
-          class="story-chapter-nav__brand story-chapter-nav__chip"
+          class="story-chapter-nav__brand"
+          data-story-chapter-brand
+          :data-story-chapter-brand-mode="brandMode"
           data-au-track="chapter-nav"
           data-au-label="brand"
           data-au-modifier="cover"
           :aria-label="brandLabelText || 'Back to cover'"
           @click="onBrandClick"
         >
+          <img
+            v-if="brandLogoUrl"
+            class="story-chapter-nav__brand-image story-chapter-nav__brand-image--desktop"
+            :src="brandLogoUrl"
+            alt=""
+            aria-hidden="true"
+          >
+          <img
+            v-if="brandMobileLogoUrl"
+            class="story-chapter-nav__brand-image story-chapter-nav__brand-image--mobile"
+            :src="brandMobileLogoUrl"
+            alt=""
+            aria-hidden="true"
+          >
           <span
-            v-if="brandPresentation.variant === 'we2-mark'"
+            v-else-if="brandMode === 'mark'"
             class="story-chapter-nav__mark"
             aria-hidden="true"
           >
@@ -233,17 +302,18 @@ onBeforeUnmount(() => {
         </button>
 
         <button
-          v-if="!expanded && activeChapter"
+          v-if="!expanded && currentLabel"
           type="button"
-          class="story-chapter-nav__current story-chapter-nav__chip"
+          class="story-chapter-nav__current"
+          data-story-chapter-current
           data-au-track="chapter-nav"
-          :data-au-label="activeChapter.id"
+          :data-au-label="currentTrackLabel"
           data-au-modifier="current"
-          aria-current="step"
-          @click="jumpTo(activeChapter)"
+          :aria-current="activeChapter ? 'step' : undefined"
+          @click="onCurrentClick"
         >
           <span class="story-chapter-nav__dot" aria-hidden="true" />
-          <span>{{ chapterLabel(activeChapter) }}</span>
+          <span>{{ currentLabel }}</span>
         </button>
 
         <div
@@ -255,13 +325,15 @@ onBeforeUnmount(() => {
             v-for="(chapter, index) in normalizedChapters"
             :key="chapter.id"
             class="story-chapter-nav__item"
+            data-story-chapter-item-wrapper
             :class="{ 'is-open': openMenuId === chapter.id }"
             @mouseenter="chapter.children?.length ? (openMenuId = chapter.id) : null"
           >
             <button
               type="button"
               class="story-chapter-nav__chip"
-              :class="{ 'is-active': index === activeIndex, 'is-past': index < activeIndex }"
+              data-story-chapter-item
+              :class="{ 'is-active': index === activeIndex, 'is-past': activeIndex >= 0 && index < activeIndex }"
               :aria-current="index === activeIndex ? 'step' : undefined"
               :aria-haspopup="chapter.children?.length ? 'menu' : undefined"
               :aria-expanded="chapter.children?.length ? openMenuId === chapter.id : undefined"
@@ -291,6 +363,7 @@ onBeforeUnmount(() => {
                 :key="child.id"
                 type="button"
                 class="story-chapter-nav__menu-item"
+                data-story-chapter-menu-item
                 :class="{ 'is-active': containsScene(child, activeSceneKey) }"
                 role="menuitem"
                 data-au-track="chapter-nav"
@@ -303,29 +376,32 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <a
-            v-if="ctaUrl"
-            :href="ctaUrl"
-            :target="ctaTarget"
-            :rel="ctaRel"
-            :download="ctaDownloadFilename"
-            class="story-chapter-nav__chip story-chapter-nav__cta story-chapter-nav__cta--rail"
-            data-au-track="chapter-nav"
-            :data-au-label="ctaTrackLabel"
-            :data-au-modifier="ctaTrackModifier"
-            :aria-label="ctaAriaLabel"
-          >
-            <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path d="M9 2v9m0 0L5 7m4 4 4-4M3 14.5h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
-          </a>
         </div>
+
+        <a
+          v-if="ctaUrl"
+          :href="ctaUrl"
+          :target="ctaTarget"
+          :rel="ctaRel"
+          :download="ctaDownloadFilename"
+          class="story-chapter-nav__cta story-chapter-nav__cta--rail"
+          data-story-chapter-cta
+          data-au-track="chapter-nav"
+          :data-au-label="ctaTrackLabel"
+          :data-au-modifier="ctaTrackModifier"
+          :aria-label="ctaAriaLabel"
+        >
+          <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M9 2v9m0 0L5 7m4 4 4-4M3 14.5h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+        </a>
 
         <button
           v-if="showToggleControl"
           type="button"
-          class="story-chapter-nav__toggle story-chapter-nav__chip"
+          class="story-chapter-nav__toggle"
+          data-story-chapter-toggle
           :aria-expanded="expanded"
           :aria-label="expanded ? 'Collapse chapters' : 'Expand chapters'"
           @click="toggleExpanded"
@@ -352,7 +428,8 @@ onBeforeUnmount(() => {
           :target="ctaTarget"
           :rel="ctaRel"
           :download="ctaDownloadFilename"
-          class="story-chapter-nav__chip story-chapter-nav__cta story-chapter-nav__cta--icon"
+          class="story-chapter-nav__cta story-chapter-nav__cta--icon"
+          data-story-chapter-cta
           data-au-track="chapter-nav"
           :data-au-label="ctaTrackLabel"
           :data-au-modifier="ctaTrackModifier"
@@ -409,7 +486,11 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
+.story-chapter-nav__brand,
+.story-chapter-nav__current,
 .story-chapter-nav__chip,
+.story-chapter-nav__cta,
+.story-chapter-nav__toggle,
 .story-chapter-nav__menu-item {
   display: inline-flex;
   align-items: center;
@@ -426,8 +507,11 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   cursor: pointer;
   transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
+  text-decoration: none;
 }
 
+.story-chapter-nav__brand,
+.story-chapter-nav__current,
 .story-chapter-nav__chip {
   padding: 0 12px;
 }
@@ -435,6 +519,18 @@ onBeforeUnmount(() => {
 .story-chapter-nav__brand {
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.story-chapter-nav__brand-image {
+  display: block;
+  width: auto;
+  max-width: 160px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.story-chapter-nav__brand-image--mobile {
+  display: none;
 }
 
 .story-chapter-nav__mark {
@@ -473,6 +569,8 @@ onBeforeUnmount(() => {
   background: var(--story-chapter-nav-active, var(--story-accent, currentColor));
 }
 
+.story-chapter-nav__current:hover,
+.story-chapter-nav__toggle:hover,
 .story-chapter-nav__chip:hover,
 .story-chapter-nav__menu-item:hover,
 .story-chapter-nav__chip.is-active {
@@ -486,6 +584,18 @@ onBeforeUnmount(() => {
 .story-chapter-nav__toggle {
   width: 34px;
   padding: 0;
+}
+
+.story-chapter-nav__cta {
+  padding: 0 12px;
+}
+
+.story-chapter-nav__cta--rail {
+  display: inline-flex;
+}
+
+.story-chapter-nav__cta--icon {
+  display: none;
 }
 
 .story-chapter-nav__toggle svg,
@@ -520,186 +630,17 @@ onBeforeUnmount(() => {
   background: var(--story-chapter-nav-active-bg, color-mix(in srgb, currentColor 12%, transparent));
 }
 
-.story-chapter-nav--we2 {
-  top: calc(16px + env(safe-area-inset-top, 0px));
-  width: auto;
-  max-width: calc(100vw - 32px);
-  color: #0c0a2e;
-  font-family: 'Poppins', Inter, ui-sans-serif, system-ui, sans-serif;
-  pointer-events: none;
-  user-select: none;
-}
-
-.story-chapter-nav--we2.story-chapter-nav--dark {
-  color: #f5f1e3;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__bar {
-  align-items: stretch;
-  gap: 4px;
-  width: fit-content;
-  max-width: 100%;
-  padding: 4px;
-  border: none;
-  border-radius: 18px;
-  box-shadow: none;
-  backdrop-filter: blur(40px) saturate(140%);
-  -webkit-backdrop-filter: blur(40px) saturate(140%);
-  transition: background-color 0.35s ease;
-}
-
-.story-chapter-nav--we2.story-chapter-nav--light .story-chapter-nav__bar {
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.story-chapter-nav--we2.story-chapter-nav--dark .story-chapter-nav__bar {
-  background: rgba(12, 10, 46, 0.58);
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__chapters {
-  gap: 4px;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__chip {
-  min-height: 32px;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 14px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__brand {
-  width: 32px;
-  min-width: 32px;
-  padding: 0;
-  border-radius: 50%;
-}
-
-.story-chapter-nav--we2.story-chapter-nav--dark .story-chapter-nav__mark {
-  box-shadow: 0 0 0 1px rgba(245, 241, 227, 0.22);
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__dot {
-  width: 6px;
-  height: 6px;
-  background: currentColor;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__caret {
-  width: 9px;
-  height: 9px;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__chip:hover,
-.story-chapter-nav--we2 .story-chapter-nav__menu-item:hover,
-.story-chapter-nav--we2 .story-chapter-nav__chip.is-active {
-  background: rgba(12, 10, 46, 0.08);
-}
-
-.story-chapter-nav--we2.story-chapter-nav--dark .story-chapter-nav__chip:hover,
-.story-chapter-nav--we2.story-chapter-nav--dark .story-chapter-nav__menu-item:hover,
-.story-chapter-nav--we2.story-chapter-nav--dark .story-chapter-nav__chip.is-active {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__chip.is-active {
-  background: rgba(12, 10, 46, 0.12);
-  font-weight: 700;
-}
-
-.story-chapter-nav--we2.story-chapter-nav--dark .story-chapter-nav__chip.is-active {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__chip.is-past {
-  opacity: 0.55;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__toggle {
-  width: 32px;
-  padding: 0;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__cta {
-  background: #f5c84c;
-  color: #0c0a2e !important;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__cta:hover {
-  background: #ffd66a !important;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__cta-label {
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  text-transform: none;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__cta--rail {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 16px;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__cta--icon {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__cta--icon .story-chapter-nav__cta-label {
-  display: none;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__menu {
-  min-width: 220px;
-  padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
-  background: rgba(12, 10, 46, 0.86);
-  box-shadow: 0 18px 48px rgba(12, 10, 46, 0.42);
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__menu-item {
-  min-height: 32px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  color: rgba(245, 241, 227, 0.88);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.story-chapter-nav--we2 .story-chapter-nav__menu-item.is-active {
-  background: rgba(245, 200, 76, 0.16);
-  color: #f5c84c;
-  font-weight: 600;
-}
-
-@media (min-width: 1024px) {
-  .story-chapter-nav--we2 .story-chapter-nav__toggle,
-  .story-chapter-nav--we2 .story-chapter-nav__current {
-    display: none;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__cta--icon {
-    display: none;
-  }
-}
-
 @media (max-width: 1023.98px) {
+  .story-chapter-nav__brand-image--desktop:has(+ .story-chapter-nav__brand-image--mobile) {
+    display: none;
+  }
+
+  .story-chapter-nav__brand-image--mobile {
+    display: block;
+    max-width: 32px;
+    height: 24px;
+  }
+
   .story-chapter-nav {
     top: calc(10px + env(safe-area-inset-top, 0px));
     width: min(calc(100vw - 16px), 680px);
@@ -746,150 +687,5 @@ onBeforeUnmount(() => {
     box-shadow: none;
   }
 
-  .story-chapter-nav--we2 {
-    top: calc(16px + env(safe-area-inset-top, 0px));
-    width: auto;
-    max-width: calc(100vw - 32px);
-  }
-
-  .story-chapter-nav--we2.is-expanded {
-    width: calc(100vw - 32px);
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__bar {
-    width: fit-content;
-    max-width: 100%;
-    justify-content: center;
-    flex-wrap: nowrap;
-    border-radius: 18px;
-  }
-
-  .story-chapter-nav--we2.is-expanded .story-chapter-nav__bar {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__chapters {
-    position: static;
-    flex-basis: 100%;
-    order: 99;
-    flex-direction: column;
-    align-items: stretch;
-    flex-wrap: nowrap;
-    gap: 4px;
-    margin-top: 4px;
-    padding: 6px 0 0;
-    border: 0;
-    border-top: 1px solid currentColor;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
-  .story-chapter-nav--we2.story-chapter-nav--light .story-chapter-nav__chapters {
-    border-top-color: rgba(12, 10, 46, 0.10);
-  }
-
-  .story-chapter-nav--we2.story-chapter-nav--dark .story-chapter-nav__chapters {
-    border-top-color: rgba(245, 241, 227, 0.18);
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__chip {
-    min-height: 32px;
-    height: 32px;
-    padding: 0 10px;
-    font-size: 11px;
-    letter-spacing: 0.03em;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__brand,
-  .story-chapter-nav--we2 .story-chapter-nav__toggle {
-    width: 32px;
-    min-width: 32px;
-    padding: 0;
-  }
-
-  .story-chapter-nav--we2.is-expanded .story-chapter-nav__toggle {
-    margin-left: auto;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__item,
-  .story-chapter-nav--we2 .story-chapter-nav__chapters .story-chapter-nav__chip {
-    width: 100%;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__chapters .story-chapter-nav__chip {
-    justify-content: center;
-  }
-
-  .story-chapter-nav--we2:not(.is-expanded) .story-chapter-nav__cta--rail {
-    display: none;
-  }
-
-  .story-chapter-nav--we2:not(.is-expanded) .story-chapter-nav__cta--icon {
-    display: inline-flex;
-  }
-
-  .story-chapter-nav--we2.is-expanded .story-chapter-nav__cta--icon {
-    display: none;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__mark {
-    width: 26px;
-    height: 26px;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__mark svg {
-    width: 17px;
-    height: 17px;
-  }
-}
-
-@media (max-width: 599px) {
-  .story-chapter-nav--we2 {
-    top: calc(12px + env(safe-area-inset-top, 0px));
-    max-width: calc(100vw - 16px);
-  }
-
-  .story-chapter-nav--we2.is-expanded {
-    width: calc(100vw - 16px);
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__bar {
-    border-radius: 20px;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__chip {
-    min-height: 36px;
-    height: 36px;
-    padding: 0 12px;
-    font-size: 12px;
-    letter-spacing: 0.04em;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__brand,
-  .story-chapter-nav--we2 .story-chapter-nav__toggle {
-    width: 36px;
-    min-width: 36px;
-    padding: 0;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__mark {
-    width: 28px;
-    height: 28px;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__mark svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .story-chapter-nav--we2 .story-chapter-nav__toggle svg {
-    width: 16px;
-    height: 16px;
-  }
 }
 </style>
