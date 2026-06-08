@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { markRaw, nextTick, ref } from 'vue'
 import BottomActionBar from '../app/components/storytime/controls/BottomActionBar.client.vue'
@@ -131,5 +131,25 @@ describe('BottomActionBar tracking attributes', () => {
     expect(shell.attributes('data-story-controls-mode')).toBe('arrows')
     expect(shell.classes()).toContain('story-controls-shell--arrows')
     expect(wrapper.get('[data-story-controls-divider]').exists()).toBe(true)
+  })
+
+  it('allows parent-owned previous navigation outside the step list', async () => {
+    const stepJumper = vi.fn(() => true)
+    const wrapper = mount(BottomActionBar, {
+      props: {
+        activeIndex: 0,
+        total: 3,
+        canGoPrevious: true,
+        showShare: false,
+        stepTargetResolver: () => null,
+        stepJumper,
+      },
+    })
+
+    const previous = wrapper.get('button[aria-label="Previous"]')
+    expect(previous.attributes('disabled')).toBeUndefined()
+
+    await previous.trigger('click')
+    expect(stepJumper).toHaveBeenCalledWith(0, 'smooth', -1)
   })
 })

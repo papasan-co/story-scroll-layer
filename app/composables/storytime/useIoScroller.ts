@@ -89,6 +89,7 @@ export function useIoScroller(
   let lastScrollDrivenChange = 0
   let programmaticStepIndex: number | null = null
   let programmaticScrollUntil = 0
+  let programmaticScrollRaf: number | null = null
   let desktopScrollRoot: HTMLElement | Window | null = null
   let resizeHandler: (() => void) | null = null
   const SCROLL_DRIVEN_LOCK_MS = 200
@@ -151,6 +152,52 @@ export function useIoScroller(
         : undefined
     return resolved === 'card' ? 'card' : 'step'
   }
+  const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  function cancelProgrammaticScrollAnimation() {
+    if (programmaticScrollRaf === null) return
+    window.cancelAnimationFrame(programmaticScrollRaf)
+    programmaticScrollRaf = null
+  }
+
+  function easeInOutCubic(value: number) {
+    return value < 0.5
+      ? 4 * value * value * value
+      : 1 - Math.pow(-2 * value + 2, 3) / 2
+  }
+
+  function animateScrollTop(
+    getCurrent: () => number,
+    setCurrent: (value: number) => void,
+    target: number,
+    durationMs: number,
+  ) {
+    cancelProgrammaticScrollAnimation()
+
+    if (durationMs <= 0 || prefersReducedMotion()) {
+      setCurrent(target)
+      return
+    }
+
+    const start = getCurrent()
+    const distance = target - start
+    if (Math.abs(distance) < 1) return
+
+    const startedAt = performance.now()
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / durationMs)
+      setCurrent(start + distance * easeInOutCubic(progress))
+      if (progress < 1) {
+        programmaticScrollRaf = window.requestAnimationFrame(tick)
+        return
+      }
+
+      programmaticScrollRaf = null
+    }
+
+    programmaticScrollRaf = window.requestAnimationFrame(tick)
+  }
+
   const activationMode = (): StoryActivationMode => {
     const value = options.activationMode
     const resolved = typeof value === 'string'
@@ -258,12 +305,16 @@ export function useIoScroller(
     align: StoryJumpAlign = 'center',
     targetElement: StoryScrollTarget = scrollTarget(),
     endOffsetPx = 0,
+    durationMs = 0,
   ) => {
     const target = findVisibleStepIndex(index, direction)
     if (target === null) return false
 
+    const safeDurationMs = typeof durationMs === 'number' && Number.isFinite(durationMs)
+      ? Math.max(0, Math.min(4000, durationMs))
+      : 0
     programmaticStepIndex = target
-    programmaticScrollUntil = Date.now() + 900
+    programmaticScrollUntil = Date.now() + (safeDurationMs > 0 ? safeDurationMs + 150 : 900)
     activateStep(target)
 
     nextTick(() => {
@@ -291,14 +342,36 @@ export function useIoScroller(
           : shouldPeekCardFromBottom
           ? rootEl.scrollTop + offsetTop - rootEl.clientHeight * 0.85
           : rootEl.scrollTop + offsetTop - (rootEl.clientHeight / 2 - r.height / 2)
-        rootEl.scrollTo({ top: nextTop, behavior })
+        if (safeDurationMs > 0 && behavior !== 'auto') {
+          animateScrollTop(
+            () => rootEl.scrollTop,
+            (value) => { rootEl.scrollTop = value },
+            nextTop,
+            safeDurationMs,
+          )
+        } else {
+          cancelProgrammaticScrollAnimation()
+          rootEl.scrollTo({ top: nextTop, behavior })
+        }
       } else {
         if (align === 'start' && targetElement === 'step') {
-          el.scrollIntoView({
-            block: 'start',
-            inline: 'nearest',
-            behavior,
-          })
+          if (safeDurationMs > 0 && behavior !== 'auto') {
+            const targetY = window.scrollY + el.getBoundingClientRect().top
+            const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+            animateScrollTop(
+              () => window.scrollY || window.pageYOffset || 0,
+              (value) => window.scrollTo(0, value),
+              Math.max(0, Math.min(maxScrollY, targetY)),
+              safeDurationMs,
+            )
+          } else {
+            cancelProgrammaticScrollAnimation()
+            el.scrollIntoView({
+              block: 'start',
+              inline: 'nearest',
+              behavior,
+            })
+          }
         } else {
           const targetY = align === 'start'
             ? window.scrollY + r.top
@@ -307,7 +380,18 @@ export function useIoScroller(
             : shouldPeekCardFromBottom
             ? window.scrollY + r.top - window.innerHeight * 0.85
             : window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
-          window.scrollTo({ top: targetY, behavior })
+          const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+          if (safeDurationMs > 0 && behavior !== 'auto') {
+            animateScrollTop(
+              () => window.scrollY || window.pageYOffset || 0,
+              (value) => window.scrollTo(0, value),
+              Math.max(0, Math.min(maxScrollY, targetY)),
+              safeDurationMs,
+            )
+          } else {
+            cancelProgrammaticScrollAnimation()
+            window.scrollTo({ top: targetY, behavior })
+          }
         }
       }
     })
@@ -317,7 +401,7 @@ export function useIoScroller(
       activateStep(target)
       programmaticStepIndex = null
       programmaticScrollUntil = 0
-    }, 950)
+    }, safeDurationMs > 0 ? safeDurationMs + 200 : 950)
 
     return true
   }
@@ -686,6 +770,7 @@ export function useIoScroller(
     removeEventListener('scroll', onScrollMobile)
     desktopScrollRoot?.removeEventListener('scroll', onScrollDesktop)
     cancelAnimationFrame(rafDesktop)
+    cancelProgrammaticScrollAnimation()
     snapThrottled as any
   })
 

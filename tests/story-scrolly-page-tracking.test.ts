@@ -133,6 +133,56 @@ describe('StoryScrollyPage tracking attributes', () => {
     expect(steps[2].attributes('data-au-scene-index')).toBe('1')
   })
 
+  it('renders leading standalone scenes before the scrolly shell while preserving source scene indexes', () => {
+    const wrapper = mount(StoryScrollyPage, {
+      props: {
+        scenes: [
+          {
+            id: 'cccccccc-3333-3333-3333-333333333333',
+            key: 'standalone-cover',
+            sourceKey: 'cover',
+            flow: 'standalone',
+            layout: 'full',
+            visual: { podSlug: 'cover', props: {} },
+            articles: [
+              { align: 'left', blocks: [{ type: 'copy', props: { paragraphs: ['Cover placeholder'] } }] },
+            ],
+          },
+          {
+            id: 'dddddddd-4444-4444-4444-444444444444',
+            key: 'first-scrolly',
+            sourceKey: 'narrative',
+            layout: 'split',
+            visual: { podSlug: 'narrative', props: {} },
+            articles: [
+              { align: 'left', blocks: [{ type: 'copy', props: { paragraphs: ['Narrative paragraph'] } }] },
+            ],
+          },
+        ],
+        controls: false,
+      },
+      global: {
+        stubs: {
+          ScrollVisual: { template: '<div data-testid="scroll-visual"><slot /></div>' },
+          BottomActionBar: { template: '<div />' },
+          ClientOnly: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    const standalone = wrapper.get('[data-au-scene-flow="standalone"]')
+    expect(standalone.attributes('data-au-scene-id')).toBe('cccccccc-3333-3333-3333-333333333333')
+    expect(standalone.attributes('data-au-scene-index')).toBe('0')
+    expect(standalone.attributes('data-au-source-key')).toBe('cover')
+    expect(standalone.element.nextElementSibling?.id).toBe('scrolly')
+
+    const steps = wrapper.findAll('.step')
+    expect(steps.length).toBe(1)
+    expect(steps[0].attributes('data-au-scene-id')).toBe('dddddddd-4444-4444-4444-444444444444')
+    expect(steps[0].attributes('data-au-scene-index')).toBe('1')
+    expect(steps[0].attributes('data-au-source-key')).toBe('narrative')
+  })
+
   it('preserves the legacy data-scene-key attribute', () => {
     const wrapper = mount(StoryScrollyPage, {
       props: { scenes, controls: false },

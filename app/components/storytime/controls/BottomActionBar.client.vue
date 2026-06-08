@@ -54,6 +54,8 @@ const props = defineProps<{
   stepSelector?: string
   stepTargetResolver?: (activeIndex: number, delta: number) => number | null
   stepJumper?: (index: number, behavior: ScrollBehavior, direction: number) => boolean
+  canGoPrevious?: boolean
+  canGoNext?: boolean
   /**
    * Optional scroll container (panel-scroll mode).
    * When provided, navigation scrolls this container instead of the window.
@@ -118,8 +120,14 @@ const nextTarget = computed(() => {
     ? resolved
     : Math.min(props.total - 1, props.activeIndex + 1)
 })
-const atFirst = computed(() => previousTarget.value === props.activeIndex || props.activeIndex <= 0)
-const atLast = computed(() => nextTarget.value === props.activeIndex || props.activeIndex >= props.total - 1)
+const atFirst = computed(() => {
+  if (typeof props.canGoPrevious === 'boolean') return !props.canGoPrevious
+  return previousTarget.value === props.activeIndex || props.activeIndex <= 0
+})
+const atLast = computed(() => {
+  if (typeof props.canGoNext === 'boolean') return !props.canGoNext
+  return nextTarget.value === props.activeIndex || props.activeIndex >= props.total - 1
+})
 
 function stepElements(): HTMLElement[] {
   const sel = props.stepSelector || '.step'
@@ -166,7 +174,10 @@ function scrollToStep(index: number) {
 
 function go(delta: number) {
   const target = delta < 0 ? previousTarget.value : nextTarget.value
-  if (target === props.activeIndex) return
+  if (target === props.activeIndex) {
+    props.stepJumper?.(props.activeIndex, 'smooth', delta)
+    return
+  }
   scrollToStep(target)
 }
 

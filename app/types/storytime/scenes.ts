@@ -1,9 +1,11 @@
 export type StoryLayout = 'split' | 'full'
 export type StoryCardMode = 'side-by-side' | 'overlay' | 'viewport-stack' | 'hidden'
 export type StoryCardAlign = 'left' | 'center' | 'right'
+export type StorySceneFlow = 'scrolly' | 'standalone'
 export type StoryScrollTarget = 'step' | 'card'
 export type StoryJumpAlign = 'center' | 'start' | 'end'
 export type StoryActivationMode = 'step-exit' | 'card-center' | 'card-exit-next'
+export type StoryIntroExitTarget = 'default' | 'step-target' | 'scrolly-start'
 export type StoryVisualTransitionMode = 'fade' | 'cross-reveal'
 export type StoryChapterNavChromeMode = 'default' | 'floating-rail'
 export type StoryChapterNavBrandMode = 'text' | 'image' | 'mark' | 'none'
@@ -54,6 +56,7 @@ export type StoryScene = {
   id?: string
   key: string
   sourceKey?: string
+  flow?: StorySceneFlow
   layout?: StoryLayout
   cardMode?: StoryCardMode
   responsiveCardMode?: StoryCardMode
@@ -164,6 +167,10 @@ export type StoryScrollPresentation = {
   activationMode?: StoryActivationMode
   activationAnchor?: number
   activationHysteresisPx?: number
+  introExitTarget?: StoryIntroExitTarget
+  introExitDurationMs?: number
+  introReturnDurationMs?: number
+  disableSnap?: boolean
   stepMinHeight?: string
   viewportStackStepMinHeight?: string
 }

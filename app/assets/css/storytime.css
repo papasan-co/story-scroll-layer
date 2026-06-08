@@ -39,6 +39,30 @@ html:root { --mobile-step-height: 150svh; }
   justify-content: center;
 }
 
+/* Structural fallback for hosts that render storytime inside an iframe.
+ * Nuxt/Tailwind hosts can miss arbitrary utility classes from layered
+ * components during preview, so keep the split-pane contract in plain CSS. */
+#scrolly[data-au-card-mode="side-by-side"] > figure {
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+#scrolly[data-au-card-mode="side-by-side"] > .storytime-article-column {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  #scrolly[data-au-card-mode="side-by-side"] > figure {
+    width: 60%;
+  }
+
+  #scrolly[data-au-card-mode="side-by-side"] > .storytime-article-column {
+    width: 40%;
+  }
+}
+
 /* Some coded-story presentations intentionally keep the full-screen visual
  * frame and card runway through tablet widths instead of switching to the
  * default md split pane. Apply that structural layout before breakpoint-

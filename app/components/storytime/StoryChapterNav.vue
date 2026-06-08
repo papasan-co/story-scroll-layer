@@ -31,6 +31,7 @@ const props = withDefaults(defineProps<{
   brand?: StoryChapterNavBrandPresentation | null
   cta?: StoryChapterNavCtaPresentation | null
   darkSceneKeys?: string[]
+  disableTeleport?: boolean
 }>(), {
   brandLabel: '',
   ariaLabel: 'Story chapters',
@@ -43,6 +44,7 @@ const props = withDefaults(defineProps<{
   brand: null,
   cta: null,
   darkSceneKeys: () => [],
+  disableTeleport: false,
 })
 
 const emit = defineEmits<{
@@ -242,7 +244,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="body" :disabled="disableTeleport">
     <nav
       ref="rootEl"
       class="story-chapter-nav"
