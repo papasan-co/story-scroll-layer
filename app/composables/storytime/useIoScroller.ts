@@ -2,6 +2,7 @@ import { ref, onMounted, onBeforeUnmount, nextTick, type Ref } from 'vue'
 import type {
   FlatStoryStep,
   StoryActivationMode,
+  StoryJumpAlign,
   StoryScene,
   StoryScrollTarget,
 } from '../../types/storytime/scenes'
@@ -88,11 +89,39 @@ export function useIoScroller(
   let lastScrollDrivenChange = 0
   let programmaticStepIndex: number | null = null
   let programmaticScrollUntil = 0
+  let programmaticScrollRaf: number | null = null
   let desktopScrollRoot: HTMLElement | Window | null = null
+  let resizeHandler: (() => void) | null = null
   const SCROLL_DRIVEN_LOCK_MS = 200
   const MOBILE_PREV_EXIT_PX = typeof options.mobilePrevExitPx === 'number'
     ? options.mobilePrevExitPx
     : 100
+  const PINCH_ZOOM_SCALE_THRESHOLD = 1.01
+  const RESIZE_LOCK_MS = 700
+  const RESIZE_WIDTH_DELTA = 40
+  const RESIZE_HEIGHT_DELTA = 120
+  let resizeLockUntil = 0
+  let lastSeenInnerWidth = typeof window !== 'undefined' ? window.innerWidth : 0
+  let lastSeenInnerHeight = typeof window !== 'undefined' ? window.innerHeight : 0
+
+  const isPinchZooming = () =>
+    typeof window !== 'undefined'
+    && window.visualViewport != null
+    && window.visualViewport.scale > PINCH_ZOOM_SCALE_THRESHOLD
+  const isResizeLocked = () => Date.now() < resizeLockUntil
+  const maybeLockOnResize = () => {
+    const width = window.innerWidth
+    const height = window.innerHeight
+    const widthDelta = Math.abs(width - lastSeenInnerWidth)
+    const heightDelta = Math.abs(height - lastSeenInnerHeight)
+
+    if (widthDelta >= RESIZE_WIDTH_DELTA || heightDelta >= RESIZE_HEIGHT_DELTA) {
+      resizeLockUntil = Date.now() + RESIZE_LOCK_MS
+    }
+
+    lastSeenInnerWidth = width
+    lastSeenInnerHeight = height
+  }
 
   const getSteps = (): HTMLElement[] => {
     const selector = options.stepSelector ?? '.step'
@@ -123,6 +152,52 @@ export function useIoScroller(
         : undefined
     return resolved === 'card' ? 'card' : 'step'
   }
+  const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  function cancelProgrammaticScrollAnimation() {
+    if (programmaticScrollRaf === null) return
+    window.cancelAnimationFrame(programmaticScrollRaf)
+    programmaticScrollRaf = null
+  }
+
+  function easeInOutCubic(value: number) {
+    return value < 0.5
+      ? 4 * value * value * value
+      : 1 - Math.pow(-2 * value + 2, 3) / 2
+  }
+
+  function animateScrollTop(
+    getCurrent: () => number,
+    setCurrent: (value: number) => void,
+    target: number,
+    durationMs: number,
+  ) {
+    cancelProgrammaticScrollAnimation()
+
+    if (durationMs <= 0 || prefersReducedMotion()) {
+      setCurrent(target)
+      return
+    }
+
+    const start = getCurrent()
+    const distance = target - start
+    if (Math.abs(distance) < 1) return
+
+    const startedAt = performance.now()
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / durationMs)
+      setCurrent(start + distance * easeInOutCubic(progress))
+      if (progress < 1) {
+        programmaticScrollRaf = window.requestAnimationFrame(tick)
+        return
+      }
+
+      programmaticScrollRaf = null
+    }
+
+    programmaticScrollRaf = window.requestAnimationFrame(tick)
+  }
+
   const activationMode = (): StoryActivationMode => {
     const value = options.activationMode
     const resolved = typeof value === 'string'
@@ -130,7 +205,7 @@ export function useIoScroller(
       : value && 'value' in value
         ? value.value
         : undefined
-    return resolved === 'card-center' ? 'card-center' : 'step-exit'
+    return resolved === 'card-center' || resolved === 'card-exit-next' ? resolved : 'step-exit'
   }
   const activationAnchor = () => {
     const value = options.activationAnchor
@@ -162,7 +237,16 @@ export function useIoScroller(
 
   const stepScrollElement = (stepEl: HTMLElement, target: StoryScrollTarget = scrollTarget()) => {
     if (target !== 'card') return stepEl
-    return stepEl.querySelector<HTMLElement>('[data-article-card]') || stepEl
+    const card = stepEl.querySelector<HTMLElement>('[data-article-card]')
+    if (!card) return stepEl
+
+    const viewportHeight = rootElement()?.clientHeight || window.innerHeight || 0
+    const cardRect = card.getBoundingClientRect()
+    if (viewportHeight > 0 && cardRect.height > viewportHeight * 0.9) {
+      return card.querySelector<HTMLElement>(':scope > .article-copy-root, :scope > *') || card
+    }
+
+    return card
   }
 
   const visibleStepIndexes = () => {
@@ -218,59 +302,106 @@ export function useIoScroller(
     index: number,
     behavior: ScrollBehavior = 'smooth',
     direction = index < activeStep.value ? -1 : 1,
-    align: 'center' | 'start' = 'center',
+    align: StoryJumpAlign = 'center',
     targetElement: StoryScrollTarget = scrollTarget(),
+    endOffsetPx = 0,
+    durationMs = 0,
   ) => {
     const target = findVisibleStepIndex(index, direction)
     if (target === null) return false
 
-    refreshSteps()
-    const el = stepsEls[target]
-    if (!el) return false
-
+    const safeDurationMs = typeof durationMs === 'number' && Number.isFinite(durationMs)
+      ? Math.max(0, Math.min(4000, durationMs))
+      : 0
     programmaticStepIndex = target
-    programmaticScrollUntil = Date.now() + 900
-
-    const scrollEl = stepScrollElement(el, targetElement)
-    const r = scrollEl.getBoundingClientRect()
-    const shouldPeekCardFromBottom =
-      align === 'center' &&
-      targetElement === 'card' &&
-      window.matchMedia('(max-width: 1024px)').matches
-    const rootEl = rootElement()
-    if (rootEl) {
-      const rootRect = rootEl.getBoundingClientRect()
-      const offsetTop = r.top - rootRect.top
-      const nextTop = align === 'start'
-        ? rootEl.scrollTop + offsetTop
-        : shouldPeekCardFromBottom
-        ? rootEl.scrollTop + offsetTop - rootEl.clientHeight * 0.85
-        : rootEl.scrollTop + offsetTop - (rootEl.clientHeight / 2 - r.height / 2)
-      rootEl.scrollTo({ top: nextTop, behavior })
-    } else {
-      if (align === 'start' && targetElement === 'step') {
-        el.scrollIntoView({
-          block: 'start',
-          inline: 'nearest',
-          behavior,
-        })
-      } else {
-        const targetY = align === 'start'
-          ? window.scrollY + r.top
-          : shouldPeekCardFromBottom
-          ? window.scrollY + r.top - window.innerHeight * 0.85
-          : window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
-        window.scrollTo({ top: targetY, behavior })
-      }
-    }
-
+    programmaticScrollUntil = Date.now() + (safeDurationMs > 0 ? safeDurationMs + 150 : 900)
     activateStep(target)
+
+    nextTick(() => {
+      refreshSteps()
+      const el = stepsEls[target]
+      if (!el) return
+
+      const scrollEl = stepScrollElement(el, targetElement)
+      const r = scrollEl.getBoundingClientRect()
+      const safeEndOffsetPx = typeof endOffsetPx === 'number' && Number.isFinite(endOffsetPx)
+        ? Math.max(0, endOffsetPx)
+        : 0
+      const shouldPeekCardFromBottom =
+        align === 'center' &&
+        targetElement === 'card' &&
+        window.matchMedia('(max-width: 1024px)').matches
+      const rootEl = rootElement()
+      if (rootEl) {
+        const rootRect = rootEl.getBoundingClientRect()
+        const offsetTop = r.top - rootRect.top
+        const nextTop = align === 'start'
+          ? rootEl.scrollTop + offsetTop
+          : align === 'end'
+          ? rootEl.scrollTop + offsetTop + r.height + safeEndOffsetPx - rootEl.clientHeight
+          : shouldPeekCardFromBottom
+          ? rootEl.scrollTop + offsetTop - rootEl.clientHeight * 0.85
+          : rootEl.scrollTop + offsetTop - (rootEl.clientHeight / 2 - r.height / 2)
+        if (safeDurationMs > 0 && behavior !== 'auto') {
+          animateScrollTop(
+            () => rootEl.scrollTop,
+            (value) => { rootEl.scrollTop = value },
+            nextTop,
+            safeDurationMs,
+          )
+        } else {
+          cancelProgrammaticScrollAnimation()
+          rootEl.scrollTo({ top: nextTop, behavior })
+        }
+      } else {
+        if (align === 'start' && targetElement === 'step') {
+          if (safeDurationMs > 0 && behavior !== 'auto') {
+            const targetY = window.scrollY + el.getBoundingClientRect().top
+            const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+            animateScrollTop(
+              () => window.scrollY || window.pageYOffset || 0,
+              (value) => window.scrollTo(0, value),
+              Math.max(0, Math.min(maxScrollY, targetY)),
+              safeDurationMs,
+            )
+          } else {
+            cancelProgrammaticScrollAnimation()
+            el.scrollIntoView({
+              block: 'start',
+              inline: 'nearest',
+              behavior,
+            })
+          }
+        } else {
+          const targetY = align === 'start'
+            ? window.scrollY + r.top
+            : align === 'end'
+            ? window.scrollY + r.top + r.height + safeEndOffsetPx - window.innerHeight
+            : shouldPeekCardFromBottom
+            ? window.scrollY + r.top - window.innerHeight * 0.85
+            : window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
+          const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+          if (safeDurationMs > 0 && behavior !== 'auto') {
+            animateScrollTop(
+              () => window.scrollY || window.pageYOffset || 0,
+              (value) => window.scrollTo(0, value),
+              Math.max(0, Math.min(maxScrollY, targetY)),
+              safeDurationMs,
+            )
+          } else {
+            cancelProgrammaticScrollAnimation()
+            window.scrollTo({ top: targetY, behavior })
+          }
+        }
+      }
+    })
+
     window.setTimeout(() => {
       if (programmaticStepIndex !== target) return
       activateStep(target)
       programmaticStepIndex = null
       programmaticScrollUntil = 0
-    }, 950)
+    }, safeDurationMs > 0 ? safeDurationMs + 200 : 950)
 
     return true
   }
@@ -400,43 +531,71 @@ export function useIoScroller(
     })
   }
 
+  const activateCardExitNextStep = () => {
+    if (!stepsEls.length) return
+    if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
+    if (isPinchZooming()) return
+    if (isResizeLocked()) return
+
+    const rootEl = rootElement()
+    const rootRect = rootEl?.getBoundingClientRect()
+    const visibleIndexes = visibleStepIndexes()
+    let index = visibleIndexes[0] ?? 0
+
+    for (let i = 1; i < visibleIndexes.length; i++) {
+      const previousIndex = visibleIndexes[i - 1]
+      const currentIndex = visibleIndexes[i]
+      const prev = stepsEls[previousIndex]
+      const current = stepsEls[currentIndex]
+      if (!prev || !current) continue
+
+      const prevCard = stepScrollElement(prev, 'card')
+      const currentCard = stepScrollElement(current, 'card')
+      const prevRect = prevCard.getBoundingClientRect()
+      const currentRect = currentCard.getBoundingClientRect()
+      const prevBottom = rootRect ? prevRect.bottom - rootRect.top : prevRect.bottom
+      const currentTop = rootRect ? currentRect.top - rootRect.top : currentRect.top
+      const viewportHeight = rootEl?.clientHeight || window.innerHeight
+
+      if (prevBottom <= -MOBILE_PREV_EXIT_PX) {
+        index = currentIndex
+      } else if (currentTop < viewportHeight) {
+        index = currentIndex
+        break
+      } else {
+        break
+      }
+    }
+
+    if (index !== activeStep.value) {
+      lastScrollDrivenChange = Date.now()
+      activateStep(index)
+    }
+  }
+
   // Mobile-only: activate step i when previous card bottom is at least MOBILE_PREV_EXIT_PX above top
   const onScrollMobile = () => {
     if (!isMobileSpacingMode()) return
+    if (isPinchZooming()) return
+    if (isResizeLocked()) return
     cancelAnimationFrame(raf)
     raf = requestAnimationFrame(() => {
+      if (isPinchZooming()) return
+      if (isResizeLocked()) return
       if (activationMode() === 'card-center') {
         activateClosestCardCenteredStep()
         return
       }
 
-      if (!stepsEls.length) return
-      const visibleIndexes = visibleStepIndexes()
-      let index = visibleIndexes[0] ?? 0
-
-      for (let i = 1; i < visibleIndexes.length; i++) {
-        const previousIndex = visibleIndexes[i - 1]
-        const currentIndex = visibleIndexes[i]
-        const prev = stepsEls[previousIndex]
-        const prevCard = prev.querySelector<HTMLElement>('[data-article-card]') || prev
-        const prevBottom = prevCard.getBoundingClientRect().bottom
-
-        if (prevBottom <= -MOBILE_PREV_EXIT_PX) {
-          index = currentIndex
-        } else {
-          break
-        }
-      }
-
-      if (index !== activeStep.value) {
-        activateStep(index)
-      }
+      activateCardExitNextStep()
     })
   }
 
   const activateClosestCardCenteredStep = () => {
     if (!stepsEls.length) return
     if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
+    if (isPinchZooming()) return
+    if (isResizeLocked()) return
 
     const rootEl = rootElement()
     const rootRect = rootEl?.getBoundingClientRect()
@@ -493,10 +652,18 @@ export function useIoScroller(
   const onScrollDesktop = () => {
     if (!isDesktopViewport()) return
     if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
+    if (isPinchZooming()) return
+    if (isResizeLocked()) return
 
     cancelAnimationFrame(rafDesktop)
     rafDesktop = requestAnimationFrame(() => {
-      activateClosestCardCenteredStep()
+      if (isPinchZooming()) return
+      if (isResizeLocked()) return
+      if (activationMode() === 'card-exit-next') {
+        activateCardExitNextStep()
+      } else {
+        activateClosestCardCenteredStep()
+      }
     })
   }
 
@@ -529,8 +696,14 @@ export function useIoScroller(
               return
             }
             if (Date.now() - lastScrollDrivenChange < SCROLL_DRIVEN_LOCK_MS) return
+            if (isPinchZooming()) return
+            if (isResizeLocked()) return
             if (activationMode() === 'card-center') {
               activateClosestCardCenteredStep()
+              return
+            }
+            if (activationMode() === 'card-exit-next') {
+              activateCardExitNextStep()
               return
             }
 
@@ -568,7 +741,7 @@ export function useIoScroller(
 
         stepsEls.forEach((el) => io!.observe(el))
         desktopScrollRoot = rootEl || window
-        if (activationMode() === 'card-center') {
+        if (activationMode() === 'card-center' || activationMode() === 'card-exit-next') {
           desktopScrollRoot.addEventListener('scroll', onScrollDesktop, { passive: true })
           onScrollDesktop()
         }
@@ -578,19 +751,26 @@ export function useIoScroller(
       }
 
       handleResize()
-      window.addEventListener('resize', handleResize)
+      lastSeenInnerWidth = window.innerWidth
+      lastSeenInnerHeight = window.innerHeight
+      resizeHandler = () => {
+        maybeLockOnResize()
+        handleResize()
+      }
+      window.addEventListener('resize', resizeHandler)
 
       stepsReady.value = true
     })
   })
 
   onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleResize)
+    if (resizeHandler) window.removeEventListener('resize', resizeHandler)
     mq?.removeEventListener('change', handleMediaChange)
     io?.disconnect()
     removeEventListener('scroll', onScrollMobile)
     desktopScrollRoot?.removeEventListener('scroll', onScrollDesktop)
     cancelAnimationFrame(rafDesktop)
+    cancelProgrammaticScrollAnimation()
     snapThrottled as any
   })
 

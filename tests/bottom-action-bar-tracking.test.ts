@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { markRaw, nextTick, ref } from 'vue'
 import BottomActionBar from '../app/components/storytime/controls/BottomActionBar.client.vue'
@@ -14,16 +14,19 @@ describe('BottomActionBar tracking attributes', () => {
     })
 
     const previous = wrapper.get('button[aria-label="Previous"]')
+    expect(previous.attributes('data-story-control')).toBe('previous')
     expect(previous.attributes('data-au-track')).toBe('story-control')
     expect(previous.attributes('data-au-label')).toBe('Previous')
     expect(previous.attributes('data-au-modifier')).toBe('previous')
 
     const share = wrapper.get('button[aria-label="Copy link"]')
+    expect(share.attributes('data-story-control')).toBe('share')
     expect(share.attributes('data-au-track')).toBe('story-control')
     expect(share.attributes('data-au-label')).toBe('Copy link')
     expect(share.attributes('data-au-modifier')).toBe('share')
 
     const next = wrapper.get('button[aria-label="Next"]')
+    expect(next.attributes('data-story-control')).toBe('next')
     expect(next.attributes('data-au-track')).toBe('story-control')
     expect(next.attributes('data-au-label')).toBe('Next')
     expect(next.attributes('data-au-modifier')).toBe('next')
@@ -84,5 +87,69 @@ describe('BottomActionBar tracking attributes', () => {
     expect(unmute.attributes('data-au-track')).toBe('story-control')
     expect(unmute.attributes('data-au-label')).toBe('Sound off')
     expect(unmute.attributes('data-au-modifier')).toBe('unmute')
+  })
+
+  it('renders a tracked mobile CTA when controls are hidden below a breakpoint', async () => {
+    const wrapper = mount(BottomActionBar, {
+      props: {
+        activeIndex: 1,
+        total: 3,
+        hideOnMobileBelow: 9999,
+        mobileCta: {
+          url: 'mailto:hello@example.com',
+          label: 'Book a free consultation',
+          ariaLabel: 'Book a free consultation',
+          target: '_self',
+          trackLabel: 'book-consultation',
+          trackModifier: 'mobile-cta',
+        },
+      },
+    })
+    await nextTick()
+
+    const cta = wrapper.get('a.story-controls-mobile-cta')
+    expect(cta.attributes('href')).toBe('mailto:hello@example.com')
+    expect(cta.attributes('data-story-mobile-cta')).toBe('')
+    expect(cta.attributes('data-story-control')).toBe('mobile-cta')
+    expect(cta.attributes('data-au-track')).toBe('story-control')
+    expect(cta.attributes('data-au-label')).toBe('book-consultation')
+    expect(cta.attributes('data-au-modifier')).toBe('mobile-cta')
+  })
+
+  it('renders a generic controls mode hook', () => {
+    const wrapper = mount(BottomActionBar, {
+      props: {
+        activeIndex: 1,
+        total: 3,
+        controlMode: 'arrows',
+        showShare: false,
+        showProgress: false,
+      },
+    })
+
+    const shell = wrapper.get('[data-story-controls]')
+    expect(shell.attributes('data-story-controls-mode')).toBe('arrows')
+    expect(shell.classes()).toContain('story-controls-shell--arrows')
+    expect(wrapper.get('[data-story-controls-divider]').exists()).toBe(true)
+  })
+
+  it('allows parent-owned previous navigation outside the step list', async () => {
+    const stepJumper = vi.fn(() => true)
+    const wrapper = mount(BottomActionBar, {
+      props: {
+        activeIndex: 0,
+        total: 3,
+        canGoPrevious: true,
+        showShare: false,
+        stepTargetResolver: () => null,
+        stepJumper,
+      },
+    })
+
+    const previous = wrapper.get('button[aria-label="Previous"]')
+    expect(previous.attributes('disabled')).toBeUndefined()
+
+    await previous.trigger('click')
+    expect(stepJumper).toHaveBeenCalledWith(0, 'smooth', -1)
   })
 })

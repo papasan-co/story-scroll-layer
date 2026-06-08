@@ -33,6 +33,36 @@ html:root { --mobile-step-height: 150svh; }
 /* Ensure steps have scroll runway even if Tailwind scanning misses arbitrary utilities */
 .step { min-height: var(--story-step-min-height, var(--mobile-step-height)); }
 
+.storytime-article-column .step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Structural fallback for hosts that render storytime inside an iframe.
+ * Nuxt/Tailwind hosts can miss arbitrary utility classes from layered
+ * components during preview, so keep the split-pane contract in plain CSS. */
+#scrolly[data-au-card-mode="side-by-side"] > figure {
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+#scrolly[data-au-card-mode="side-by-side"] > .storytime-article-column {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  #scrolly[data-au-card-mode="side-by-side"] > figure {
+    width: 60%;
+  }
+
+  #scrolly[data-au-card-mode="side-by-side"] > .storytime-article-column {
+    width: 40%;
+  }
+}
+
 /* Some coded-story presentations intentionally keep the full-screen visual
  * frame and card runway through tablet widths instead of switching to the
  * default md split pane. Apply that structural layout before breakpoint-
@@ -71,7 +101,7 @@ html:root { --mobile-step-height: 150svh; }
 }
 
 #scrolly[data-au-force-viewport-card-stack="true"] > .storytime-article-column .step {
-  min-height: var(--story-viewport-stack-step-height, var(--story-step-min-height, 90svh));
+  min-height: var(--story-viewport-stack-step-height, var(--story-step-min-height, 90svh)) !important;
   pointer-events: none;
 }
 
@@ -79,8 +109,100 @@ html:root { --mobile-step-height: 150svh; }
   pointer-events: auto;
 }
 
+#scrolly[data-au-card-mode="viewport-stack"] {
+  flex-direction: column !important;
+  overflow-x: clip;
+}
+
+#scrolly[data-au-card-mode="viewport-stack"] > figure {
+  width: 100% !important;
+  min-width: 100% !important;
+  flex-basis: auto !important;
+}
+
+#scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex-basis: auto !important;
+  margin: 0 auto;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+  border-left: 0;
+  background: transparent;
+  pointer-events: none;
+  z-index: 30;
+}
+
+#scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column .step {
+  position: relative;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: var(--story-viewport-stack-step-height, var(--story-step-min-height, 90svh)) !important;
+  padding: 0 1rem 84px;
+  scroll-snap-align: end;
+  scroll-snap-stop: always;
+  pointer-events: none;
+}
+
+#scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column [data-article-card] {
+  width: 100%;
+  max-width: var(--story-viewport-stack-card-max-width, 720px);
+  pointer-events: auto;
+}
+
+@media (min-width: 901px) {
+  #scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column .step {
+    padding-right: var(--story-viewport-stack-step-inline-padding, 2rem);
+    padding-bottom: 120px;
+    padding-left: var(--story-viewport-stack-step-inline-padding, 2rem);
+  }
+}
+
+@media (max-width: 480px) {
+  #scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column .step {
+    padding-right: 0.75rem;
+    padding-bottom: 76px;
+    padding-left: 0.75rem;
+  }
+}
+
 #scrolly[data-au-force-viewport-card-stack="true"][data-au-card-mode="hidden"] > .storytime-article-column [data-article-card] {
   visibility: visible;
+}
+
+#scrolly[data-au-card-mode="hidden"] {
+  flex-direction: column !important;
+  overflow-x: clip;
+}
+
+#scrolly[data-au-card-mode="hidden"] > figure {
+  width: 100% !important;
+  min-width: 100% !important;
+  flex-basis: auto !important;
+}
+
+#scrolly[data-au-card-mode="hidden"] > .storytime-article-column {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex-basis: auto !important;
+  margin: 0;
+  border-left: 0;
+  background: transparent;
+  pointer-events: none;
+  z-index: 30;
+}
+
+#scrolly[data-au-card-mode="hidden"] > .storytime-article-column .step {
+  position: relative;
+  align-items: stretch;
+  pointer-events: none;
+}
+
+#scrolly[data-au-card-mode="hidden"] > .storytime-article-column [data-article-card] {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 @media (min-width: 1025px) {
@@ -141,72 +263,4 @@ html:root { --mobile-step-height: 150svh; }
     pointer-events: auto;
   }
 
-  #scrolly[data-au-card-mode="viewport-stack"] {
-    flex-direction: column !important;
-    overflow-x: clip;
-  }
-
-  #scrolly[data-au-card-mode="viewport-stack"] > figure {
-    width: 100% !important;
-    min-width: 100% !important;
-    flex-basis: auto !important;
-  }
-
-  #scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    flex-basis: auto !important;
-    margin: 0 auto;
-    padding-right: 1.5rem;
-    padding-left: 1.5rem;
-    border-left: 0;
-    background: transparent;
-    pointer-events: none;
-    z-index: 30;
-  }
-
-  #scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column .step {
-    position: relative;
-    align-items: flex-start;
-    pointer-events: none;
-  }
-
-  #scrolly[data-au-card-mode="viewport-stack"] > .storytime-article-column [data-article-card] {
-    pointer-events: auto;
-  }
-
-  #scrolly[data-au-card-mode="hidden"] {
-    flex-direction: column !important;
-    overflow-x: clip;
-  }
-
-  #scrolly[data-au-card-mode="hidden"] > figure {
-    width: 100% !important;
-    min-width: 100% !important;
-    flex-basis: auto !important;
-  }
-
-  #scrolly[data-au-card-mode="hidden"] > .storytime-article-column {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    flex-basis: auto !important;
-    margin: 0;
-    border-left: 0;
-    background: transparent;
-    pointer-events: none;
-    z-index: 30;
-  }
-
-  #scrolly[data-au-card-mode="hidden"] > .storytime-article-column .step {
-    position: relative;
-    align-items: stretch;
-    pointer-events: none;
-  }
-
-  #scrolly[data-au-card-mode="hidden"] > .storytime-article-column [data-article-card] {
-    visibility: hidden;
-    pointer-events: none;
-  }
 }
