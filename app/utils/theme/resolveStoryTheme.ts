@@ -29,6 +29,7 @@ export type StoryTheme = {
     heading_font_id?: string | null
     body_font_id?: string | null
   } | null
+  stylesheets?: string[] | null
 } | null
 
 export type BrandFontLike = {
@@ -561,6 +562,7 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
 
   const stylesheets = [
     typeof effectiveBrand?.css_path === 'string' ? effectiveBrand.css_path : null,
+    ...(Array.isArray(storyTheme?.stylesheets) ? storyTheme.stylesheets : []),
     headingFont.stylesheet,
     bodyFont.stylesheet,
   ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
