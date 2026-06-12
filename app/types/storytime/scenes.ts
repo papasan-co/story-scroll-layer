@@ -2,6 +2,7 @@ export type StoryLayout = 'split' | 'full'
 export type StoryCardMode = 'side-by-side' | 'overlay' | 'viewport-stack' | 'hidden'
 export type StoryCardAlign = 'left' | 'center' | 'right'
 export type StorySceneFlow = 'scrolly' | 'standalone'
+export type StoryFlowMode = 'scrolly' | 'timed-path'
 export type StoryScrollTarget = 'step' | 'card'
 export type StoryJumpAlign = 'center' | 'start' | 'end'
 export type StoryActivationMode = 'step-exit' | 'card-center' | 'card-exit-next'
@@ -80,6 +81,104 @@ export type StoryChapter = {
   label: string
   sceneKeys: string[]
   children?: StoryChapter[]
+}
+
+export type StoryTimedPathMediaKind = 'color' | 'gradient' | 'image' | 'video'
+export type StoryTimedPathLayout = 'full' | 'split'
+export type StoryTimedPathDirection = 'forward' | 'back'
+
+export type StoryTimedPathMedia = {
+  kind: StoryTimedPathMediaKind
+  src?: string | Record<string, any>
+  url?: string | Record<string, any>
+  directUrl?: string
+  s3Key?: string
+  key?: string
+  background?: string
+  backgroundColor?: string
+  overlay?: string | false | null
+  mediaId?: string
+  mediaUuid?: string
+  color?: string
+  value?: string
+  alt?: string
+  fit?: 'cover' | 'contain'
+  position?: string
+  muted?: boolean
+  loop?: boolean
+  autoplay?: boolean
+  playsInline?: boolean
+  [key: string]: any
+}
+
+export type StoryTimedPathChoice = {
+  key: string
+  label: string
+  pathKey?: string
+  description?: string
+  icon?: string
+  trackLabel?: string
+  trackModifier?: string
+  [key: string]: any
+}
+
+export type StoryTimedPathStep = {
+  id?: string
+  key: string
+  sourceKey?: string
+  sceneKey: string
+  sceneLabel?: string
+  type: string
+  durationMs?: number
+  layout?: StoryTimedPathLayout
+  media?: StoryTimedPathMedia | null
+  visual?: StoryVisual
+  blocks?: StoryArticleBlock[]
+  choices?: StoryTimedPathChoice[]
+  pre?: string
+  title?: string
+  body?: string
+  [key: string]: any
+}
+
+export type StoryTimedPathChapter = {
+  key: string
+  label: string
+  sceneKeys?: string[]
+  stepKeys?: string[]
+  children?: StoryTimedPathChapter[]
+}
+
+export type StoryTimedPathExploreMoreTarget = {
+  key: string
+  label: string
+  positions: number[]
+}
+
+export type StoryTimedPathControls = {
+  controlMode?: 'bottom-bar' | 'top-icons' | 'hidden'
+  chapterMenuMode?: 'floating-list' | 'modal-list'
+  chapterMenuTitle?: string
+  keyboard?: boolean
+  tapZones?: boolean
+  swipe?: boolean
+  pauseOnHold?: boolean
+  clearPathOnBackToChoice?: boolean
+  showProgress?: boolean
+  showLocation?: boolean
+  showChapterMenu?: boolean
+  showStepDots?: boolean
+}
+
+export type StoryTimedPathPresentation = {
+  steps?: StoryTimedPathStep[]
+  paths?: Record<string, string[]>
+  chapters?: StoryTimedPathChapter[]
+  initialPath?: string | null
+  defaultAdvance?: 'right' | 'left'
+  controls?: StoryTimedPathControls
+  choiceStepType?: string
+  splitBreakpoint?: number
 }
 
 export type StoryControlsPresentation = {
@@ -176,12 +275,14 @@ export type StoryScrollPresentation = {
 }
 
 export type StoryPresentation = {
+  flowMode?: StoryFlowMode
   navMode?: string
   chapters?: StoryChapter[]
   controls?: StoryControlsPresentation
   chapterNav?: StoryChapterNavPresentation
   scrollHint?: StoryScrollHintPresentation
   scroll?: StoryScrollPresentation
+  timedPath?: StoryTimedPathPresentation
   visualTransitionMode?: StoryVisualTransitionMode
   [key: string]: any
 }
