@@ -175,12 +175,55 @@ describe('StoryScrollyPage tracking attributes', () => {
     expect(standalone.attributes('data-au-scene-index')).toBe('0')
     expect(standalone.attributes('data-au-source-key')).toBe('cover')
     expect(standalone.element.nextElementSibling?.id).toBe('scrolly')
+    expect(wrapper.find('[data-testid="scroll-visual"]').exists()).toBe(false)
 
     const steps = wrapper.findAll('.step')
     expect(steps.length).toBe(1)
     expect(steps[0].attributes('data-au-scene-id')).toBe('dddddddd-4444-4444-4444-444444444444')
     expect(steps[0].attributes('data-au-scene-index')).toBe('1')
     expect(steps[0].attributes('data-au-source-key')).toBe('narrative')
+  })
+
+  it('defers the scrolly visual when standalone scenes arrive after initial render', async () => {
+    const wrapper = mount(StoryScrollyPage, {
+      props: { scenes: [], controls: false },
+      global: {
+        stubs: {
+          ScrollVisual: { template: '<div data-testid="scroll-visual"><slot /></div>' },
+          BottomActionBar: { template: '<div />' },
+          ClientOnly: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    await wrapper.setProps({
+      scenes: [
+        {
+          id: 'cccccccc-3333-3333-3333-333333333333',
+          key: 'standalone-cover',
+          sourceKey: 'cover',
+          flow: 'standalone',
+          layout: 'full',
+          visual: { podSlug: 'cover', props: {} },
+          articles: [
+            { align: 'left', blocks: [{ type: 'copy', props: { paragraphs: ['Cover placeholder'] } }] },
+          ],
+        },
+        {
+          id: 'dddddddd-4444-4444-4444-444444444444',
+          key: 'first-scrolly',
+          sourceKey: 'narrative',
+          layout: 'split',
+          visual: { podSlug: 'narrative', props: {} },
+          articles: [
+            { align: 'left', blocks: [{ type: 'copy', props: { paragraphs: ['Narrative paragraph'] } }] },
+          ],
+        },
+      ],
+    })
+
+    expect(wrapper.get('[data-au-scene-flow="standalone"]').attributes('data-au-source-key')).toBe('cover')
+    expect(wrapper.find('[data-testid="scroll-visual"]').exists()).toBe(false)
   })
 
   it('preserves the legacy data-scene-key attribute', () => {

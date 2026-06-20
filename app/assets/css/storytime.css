@@ -39,6 +39,14 @@ html:root { --mobile-step-height: 150svh; }
   justify-content: center;
 }
 
+/* Runtime fallback for hosts that do not include scoped SFC CSS from layered
+ * storytime blocks in the same order. Keeps the card-grid CTA headline on the
+ * source hard-coded-story scale while preserving smaller responsive screens. */
+.article-cta-root--card-grid .article-cta-headline {
+  font-size: clamp(1.875rem, 4vw, 2.25rem);
+  line-height: clamp(2.25rem, 4.4vw, 2.5rem);
+}
+
 /* Structural fallback for hosts that render storytime inside an iframe.
  * Nuxt/Tailwind hosts can miss arbitrary utility classes from layered
  * components during preview, so keep the split-pane contract in plain CSS. */
@@ -203,6 +211,30 @@ html:root { --mobile-step-height: 150svh; }
 #scrolly[data-au-card-mode="hidden"] > .storytime-article-column [data-article-card] {
   visibility: hidden;
   pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  #scrolly[data-au-card-mode="hidden"] {
+    flex-direction: row !important;
+  }
+
+  #scrolly[data-au-card-mode="hidden"] > figure {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex-shrink: 0 !important;
+  }
+
+  #scrolly[data-au-card-mode="hidden"] > .storytime-article-column {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+@media (min-width: 1025px) {
+  #scrolly[data-au-card-mode="hidden"] > .storytime-article-column {
+    margin-left: -100% !important;
+  }
 }
 
 @media (min-width: 1025px) {

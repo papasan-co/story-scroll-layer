@@ -201,6 +201,14 @@ export type StoryControlsPresentation = {
   responsiveJumpEndOffsetPx?: StoryResponsiveNumberRule[]
   jumpTarget?: StoryScrollTarget
   mobileCta?: StoryChapterNavCtaPresentation | null
+  reaction?: StoryControlsReactionPresentation | null
+}
+
+export type StoryControlsReactionPresentation = {
+  enabled?: boolean
+  label?: string
+  count?: number
+  modifier?: string
 }
 
 export type StoryChapterNavBrandPresentation = {
