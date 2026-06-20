@@ -65,4 +65,48 @@ describe('ArticleCTA tracking attributes', () => {
 
     expect(wrapper.find('[data-au-track]').exists()).toBe(false)
   })
+
+  it('renders card-grid actions with per-action content and tracking metadata', () => {
+    const wrapper = mount(ArticleCTA, {
+      props: {
+        headline: 'Be part of the change',
+        caption: 'Choose a path.',
+        variant: 'card-grid',
+        actions: [
+          {
+            label: 'Discuss a Partnership',
+            action: 'url',
+            target: 'https://example.org/partner',
+            heading: 'For Employers',
+            description: 'Transform your workforce.',
+            color: '#004488',
+            textColor: '#FFFFFF',
+            modifier: 'employer',
+          },
+          {
+            label: 'Invest in MLT',
+            action: 'url',
+            target: 'https://example.org/donate',
+            heading: 'For Donors',
+            description: 'Invest in economic mobility.',
+            color: '#64C644',
+            modifier: 'donor',
+          },
+        ],
+      },
+      global: { stubs: { ClientOnly: { template: '<div><slot /></div>' }, Teleport: { template: '<div><slot /></div>' } } },
+    })
+
+    expect(wrapper.classes()).toContain('article-cta-root--card-grid')
+    expect(wrapper.text()).toContain('For Employers')
+    expect(wrapper.text()).toContain('For Donors')
+    const anchors = wrapper.findAll('a[data-au-track="cta"]')
+    expect(anchors).toHaveLength(2)
+    expect(anchors[0].attributes('data-au-label')).toBe('Discuss a Partnership')
+    expect(anchors[0].attributes('data-au-modifier')).toBe('employer')
+    expect(anchors[0].classes()).toContain('py-3')
+    expect(anchors[0].attributes('style')).toContain('--article-cta-action-text: #FFFFFF;')
+    expect(anchors[1].attributes('data-au-label')).toBe('Invest in MLT')
+    expect(anchors[1].attributes('data-au-modifier')).toBe('donor')
+  })
 })

@@ -9,9 +9,10 @@
  * - Share: copy link
  * - Optional video controls if the active visual exposes known methods/refs
  *
- * This intentionally removes partner-stories-only dependencies (analytics, ClapEmitter, Icon).
+ * This intentionally avoids partner-specific dependencies while preserving the
+ * common remote behavior from the hard-coded story reels.
  */
-import { ref, onMounted, onBeforeUnmount, computed, toRaw, unref, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick, toRaw, unref, watch } from 'vue'
 import type { StoryControlsMode, StoryJumpAlign } from '../../../types/storytime/scenes'
 
 const props = defineProps<{
@@ -43,6 +44,12 @@ const props = defineProps<{
     rel?: string
     trackLabel?: string
     trackModifier?: string
+  } | null
+  reaction?: {
+    enabled?: boolean
+    label?: string
+    count?: number
+    modifier?: string
   } | null
   jumpAlign?: StoryJumpAlign
   jumpEndOffsetPx?: number
@@ -103,6 +110,76 @@ async function copyLink() {
     window.setTimeout(() => (copied.value = false), 1300)
   } catch {
     // ignore
+  }
+}
+
+type ReactionParticle = {
+  id: number
+  x: number
+  y: number
+  dx: number
+  dy: number
+  size: number
+  rotate: number
+  duration: number
+}
+
+const reactionCountsByStep = ref<Record<number, number>>({})
+const reactionButtonRef = ref<HTMLElement | null>(null)
+const reactionParticles = ref<ReactionParticle[]>([])
+let reactionParticleSeed = 1
+const reactionBaseCount = computed(() => {
+  const count = props.reaction?.count
+  return typeof count === 'number' && Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0
+})
+const reactionDelta = computed(() => reactionCountsByStep.value[props.activeIndex] ?? 0)
+const reactionCount = computed(() => reactionBaseCount.value + reactionDelta.value)
+const showReactionControl = computed(() => props.reaction?.enabled === true)
+const reactionLabel = computed(() => {
+  const label = props.reaction?.label
+  return typeof label === 'string' && label.trim() ? label.trim() : 'React'
+})
+const reactionModifier = computed(() => {
+  const modifier = props.reaction?.modifier
+  return typeof modifier === 'string' && modifier.trim() ? modifier.trim() : 'reaction'
+})
+function randomBetween(min: number, max: number) {
+  return Math.random() * (max - min) + min
+}
+
+async function burstReactionParticles(sourceEl: HTMLElement, count = 8) {
+  const rect = sourceEl.getBoundingClientRect()
+  const x = rect.left + rect.width / 2
+  const y = rect.top + rect.height / 2
+  const created = Array.from({ length: count }, () => ({
+    id: reactionParticleSeed++,
+    x,
+    y,
+    dx: randomBetween(-58, 58),
+    dy: randomBetween(-150, -235),
+    size: randomBetween(16, 21),
+    rotate: randomBetween(-26, 26),
+    duration: randomBetween(780, 1120),
+  }))
+
+  reactionParticles.value = [...reactionParticles.value, ...created]
+  await nextTick()
+
+  window.setTimeout(() => {
+    const ids = new Set(created.map(p => p.id))
+    reactionParticles.value = reactionParticles.value.filter(p => !ids.has(p.id))
+  }, 1300)
+}
+
+function react() {
+  const key = Number(props.activeIndex ?? 0)
+  reactionCountsByStep.value = {
+    ...reactionCountsByStep.value,
+    [key]: (reactionCountsByStep.value[key] ?? 0) + 1,
+  }
+
+  if (reactionButtonRef.value) {
+    void burstReactionParticles(reactionButtonRef.value)
   }
 }
 
@@ -186,8 +263,11 @@ type ActiveVisualLike = {
   play?: () => void
   pause?: () => void
   toggleMute?: () => void
+  volumeUp?: (step?: number) => void
+  volumeDown?: (step?: number) => void
   isPlaying?: { value: boolean }
   isMuted?: { value: boolean }
+  volume?: { value: number }
 } | null
 
 const active = computed(() => {
@@ -209,19 +289,24 @@ const hasVideo = computed(() => {
 
 const playing = ref(false)
 const muted = ref(false)
+const vol = ref(1)
+const showVolumeBar = ref(false)
 
 let stopWatchPlaying: (() => void) | null = null
 let stopWatchMuted: (() => void) | null = null
+let stopWatchVolume: (() => void) | null = null
+let volumeHideTimer: ReturnType<typeof window.setTimeout> | null = null
 
 watch(
   active,
   (v, _prev, onCleanup) => {
-    stopWatchPlaying?.(); stopWatchMuted?.()
-    stopWatchPlaying = stopWatchMuted = null
+    stopWatchPlaying?.(); stopWatchMuted?.(); stopWatchVolume?.()
+    stopWatchPlaying = stopWatchMuted = stopWatchVolume = null
 
-    if (!v || (v as any).__isHeroVideo !== true) {
+    if (!v || !hasVideo.value) {
       playing.value = false
       muted.value = false
+      vol.value = 1
       return
     }
 
@@ -237,25 +322,61 @@ watch(
       }, { immediate: true })
     }
 
+    if ((v as any).volume) {
+      stopWatchVolume = watch((v as any).volume, (val: number) => {
+        vol.value = typeof val === 'number' && Number.isFinite(val) ? Math.max(0, Math.min(1, val)) : 1
+      }, { immediate: true })
+    }
+
     onCleanup(() => {
-      stopWatchPlaying?.(); stopWatchMuted?.()
-      stopWatchPlaying = stopWatchMuted = null
+      stopWatchPlaying?.(); stopWatchMuted?.(); stopWatchVolume?.()
+      stopWatchPlaying = stopWatchMuted = stopWatchVolume = null
     })
   },
   { immediate: true },
 )
 
 function togglePlay() {
-  const v = unref(props.activeVisual as ActiveVisualLike)
-  if (!v || v.__isHeroVideo !== true) return
+  const v = active.value as ActiveVisualLike
+  if (!v) return
   if (playing.value) v.pause?.()
   else v.play?.()
 }
 
 function toggleMute() {
-  const v = unref(props.activeVisual as ActiveVisualLike)
-  if (!v || v.__isHeroVideo !== true) return
+  const v = active.value as ActiveVisualLike
+  if (!v) return
   v.toggleMute?.()
+}
+
+const showVolumeDownControl = computed(() => {
+  const v = active.value as ActiveVisualLike
+  return hasVideo.value && !!v && typeof v.volumeDown === 'function'
+})
+const showVolumeUpControl = computed(() => {
+  const v = active.value as ActiveVisualLike
+  return hasVideo.value && !!v && typeof v.volumeUp === 'function'
+})
+const hasVolumeControls = computed(() => {
+  return showVolumeDownControl.value || showVolumeUpControl.value
+})
+const volumePercent = computed(() => Math.round(Math.max(0, Math.min(1, vol.value)) * 100))
+function revealVolumeBar() {
+  showVolumeBar.value = true
+  if (volumeHideTimer) window.clearTimeout(volumeHideTimer)
+  volumeHideTimer = window.setTimeout(() => { showVolumeBar.value = false }, 1400)
+}
+
+function volumeDown() {
+  const v = active.value as ActiveVisualLike
+  v?.volumeDown?.()
+  revealVolumeBar()
+}
+
+function volumeUp() {
+  const v = active.value as ActiveVisualLike
+  v?.volumeUp?.()
+  revealVolumeBar()
 }
 
 const progressPercent = computed(() => {
@@ -345,6 +466,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateIsMobile)
   window.removeEventListener('scroll', onScroll)
   if (scrollRaf) cancelAnimationFrame(scrollRaf)
+  if (volumeHideTimer) window.clearTimeout(volumeHideTimer)
 })
 </script>
 
@@ -357,6 +479,13 @@ onBeforeUnmount(() => {
     data-story-controls-root
     aria-live="polite"
   >
+    <div v-if="hasVideo && showVolumeBar" class="mx-auto mb-2 w-[260px] max-w-[80vw]" data-story-controls-volume-bar>
+      <div class="h-1.5 rounded-full bg-[var(--story-controls-divider)] overflow-hidden">
+        <div class="h-full bg-[var(--story-controls-progress)]" :style="{ width: volumePercent + '%' }" />
+      </div>
+      <div class="mt-1 text-[10px] text-center text-[var(--story-controls-text)]">Volume {{ volumePercent }}%</div>
+    </div>
+
     <div v-if="copied" class="mx-auto mb-2 w-max px-3 py-1 rounded-full text-xs bg-black/80 text-white text-center">
       Link copied
     </div>
@@ -408,6 +537,30 @@ onBeforeUnmount(() => {
 
       <div class="story-controls-divider mx-1 w-px h-6 bg-[var(--story-controls-divider)]" data-story-controls-divider />
 
+      <button
+        v-if="showReactionControl"
+        class="story-controls-reaction inline-flex items-center justify-center gap-2 rounded-full transition-colors"
+        data-story-control="reaction"
+        type="button"
+        ref="reactionButtonRef"
+        :aria-label="reactionLabel"
+        data-au-track="story-control"
+        :data-au-label="reactionLabel"
+        :data-au-modifier="reactionModifier"
+        @click="react"
+      >
+        <svg class="story-controls-reaction__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M8.5 11.3 6.2 8.9a1.55 1.55 0 0 1 2.2-2.18l2.28 2.28" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M11.2 9.7 8.35 6.85a1.55 1.55 0 1 1 2.2-2.18l3.55 3.55" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M14.05 8.17 11.8 5.92a1.48 1.48 0 0 1 2.1-2.1l3.75 3.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M17.5 10.6 16 9.1a1.43 1.43 0 0 1 2.02-2.02l1.88 1.88c1.84 1.84 1.84 4.82 0 6.66l-1.46 1.46a6.2 6.2 0 0 1-8.78 0L5.65 13.1a1.5 1.5 0 0 1 2.12-2.12l2.14 2.14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M5.4 4.2 3.8 2.6M3.7 8.4H1.5M8.5 3.4V1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+        <span class="story-controls-reaction__count">{{ reactionCount }}</span>
+      </button>
+
+      <div v-if="showReactionControl" class="story-controls-divider mx-1 w-px h-6 bg-[var(--story-controls-divider)]" data-story-controls-divider />
+
       <template v-if="hasVideo">
         <button
           class="story-controls-btn p-2 rounded-full transition-colors"
@@ -435,6 +588,34 @@ onBeforeUnmount(() => {
           <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M19 5a8 8 0 0 1 0 14"/><path d="M15 9a4 4 0 0 1 0 6"/></svg>
         </button>
         <div class="story-controls-divider mx-1 w-px h-6 bg-[var(--story-controls-divider)]" data-story-controls-divider />
+
+        <template v-if="hasVolumeControls">
+          <button
+            v-if="showVolumeDownControl"
+            class="story-controls-btn p-2 rounded-full transition-colors"
+            data-story-control="volume-down"
+            aria-label="Volume down"
+            data-au-track="story-control"
+            data-au-label="Volume down"
+            data-au-modifier="volume-down"
+            @click="volumeDown"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M15 9a4 4 0 0 1 0 6"/><path d="M23 12h-4"/></svg>
+          </button>
+          <button
+            v-if="showVolumeUpControl"
+            class="story-controls-btn p-2 rounded-full transition-colors"
+            data-story-control="volume-up"
+            aria-label="Volume up"
+            data-au-track="story-control"
+            data-au-label="Volume up"
+            data-au-modifier="volume-up"
+            @click="volumeUp"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M19 5a8 8 0 0 1 0 14"/><path d="M15 9a4 4 0 0 1 0 6"/><path d="M23 12h-4"/><path d="M21 10v4"/></svg>
+          </button>
+          <div class="story-controls-divider mx-1 w-px h-6 bg-[var(--story-controls-divider)]" data-story-controls-divider />
+        </template>
       </template>
 
       <button
@@ -472,12 +653,46 @@ onBeforeUnmount(() => {
         <div class="h-full" :style="{ width: progressPercent + '%', background: 'var(--story-controls-progress, var(--brand-primary, #007c7e))', transition: 'width 280ms ease' }" />
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="reactionParticles.length" class="story-controls-reaction-particles" aria-hidden="true">
+        <span
+          v-for="particle in reactionParticles"
+          :key="particle.id"
+          class="story-controls-reaction-particle"
+          :style="{
+            '--particle-x': particle.x + 'px',
+            '--particle-y': particle.y + 'px',
+            '--particle-dx': particle.dx + 'px',
+            '--particle-dy': particle.dy + 'px',
+            '--particle-size': particle.size + 'px',
+            '--particle-rotate': particle.rotate + 'deg',
+            '--particle-duration': particle.duration + 'ms',
+          }"
+        >
+          <span class="story-controls-reaction-particle__chip" />
+          <svg class="story-controls-reaction-particle__glyph" width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M8.5 11.3 6.2 8.9a1.55 1.55 0 0 1 2.2-2.18l2.28 2.28" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M11.2 9.7 8.35 6.85a1.55 1.55 0 1 1 2.2-2.18l3.55 3.55" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M14.05 8.17 11.8 5.92a1.48 1.48 0 0 1 2.1-2.1l3.75 3.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M17.5 10.6 16 9.1a1.43 1.43 0 0 1 2.02-2.02l1.88 1.88c1.84 1.84 1.84 4.82 0 6.66l-1.46 1.46a6.2 6.2 0 0 1-8.78 0L5.65 13.1a1.5 1.5 0 0 1 2.12-2.12l2.14 2.14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M5.4 4.2 3.8 2.6M3.7 8.4H1.5M8.5 3.4V1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </span>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
 .story-controls-shell {
-  background: var(--story-controls-bg, rgba(255, 255, 255, 0.95));
+  background: color-mix(in srgb, var(--story-controls-bg, #ffffff) 95%, transparent);
+  color: var(--story-controls-text, #111111);
+}
+
+.story-controls-btn,
+.story-controls-reaction__icon,
+.story-controls-reaction__count {
   color: var(--story-controls-text, #111111);
 }
 
@@ -525,6 +740,30 @@ onBeforeUnmount(() => {
   border-radius: 12px;
 }
 
+.story-controls-reaction {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--story-controls-text, #111111) 14%, transparent);
+  background: color-mix(in srgb, var(--story-controls-bg, #ffffff) 92%, #ffffff 8%);
+}
+
+.story-controls-reaction:hover {
+  background: color-mix(in srgb, var(--story-controls-text, #111111) 8%, var(--story-controls-bg, #ffffff));
+}
+
+.story-controls-reaction__icon {
+  flex: 0 0 auto;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.story-controls-reaction__count {
+  min-width: 0.65em;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .story-controls-divider {
   display: block;
 }
@@ -545,5 +784,70 @@ onBeforeUnmount(() => {
 
 .story-controls-btn:disabled {
   opacity: var(--story-controls-disabled-opacity, 0.4) !important;
+}
+
+.story-controls-reaction-particles {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  pointer-events: none;
+}
+
+.story-controls-reaction-particle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--particle-size, 18px);
+  height: var(--particle-size, 18px);
+  color: var(--story-reaction-particle-color, var(--story-controls-progress, var(--brand-primary, #007c7e)));
+  transform: translate(var(--particle-x, 0), var(--particle-y, 0)) rotate(var(--particle-rotate, 0));
+  animation: storyControlsReactionBurst var(--particle-duration, 900ms) cubic-bezier(0.18, 0.82, 0.28, 1) forwards;
+}
+
+.story-controls-reaction-particle__chip {
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--story-controls-bg, #ffffff) 94%, #ffffff 6%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.story-controls-reaction-particle__glyph {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes storyControlsReactionBurst {
+  0% {
+    opacity: 0;
+    transform: translate(var(--particle-x, 0), var(--particle-y, 0)) scale(0.65) rotate(var(--particle-rotate, 0));
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(
+        calc(var(--particle-x, 0) + var(--particle-dx, 0)),
+        calc(var(--particle-y, 0) + var(--particle-dy, -180px))
+      )
+      scale(1.08)
+      rotate(calc(var(--particle-rotate, 0) + 24deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-controls-reaction-particle {
+    animation-duration: 1ms;
+  }
 }
 </style>

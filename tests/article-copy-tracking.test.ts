@@ -11,7 +11,13 @@ describe('ArticleCopy CTA tracking attributes', () => {
   it('marks URL CTAs with delegated tracker attributes', () => {
     const wrapper = mount(ArticleCopy, {
       props: {
-        cta: { label: 'Read the report', action: 'url', target: 'https://example.org/report' },
+        cta: {
+          label: 'Read the report',
+          action: 'url',
+          target: 'https://example.org/report',
+          color: '#00274F',
+          textColor: '#FFFFFF',
+        },
       },
       global: { stubs: globalStubs },
     })
@@ -21,6 +27,11 @@ describe('ArticleCopy CTA tracking attributes', () => {
     expect(anchor.attributes('data-au-label')).toBe('Read the report')
     expect(anchor.attributes('data-au-modifier')).toBe('url')
     expect(anchor.attributes('href')).toBe('https://example.org/report')
+    expect(anchor.attributes('target')).toBe('_blank')
+    expect(anchor.attributes('rel')).toBe('noopener noreferrer')
+    expect(anchor.classes()).toContain('self-start')
+    expect(anchor.attributes('style')).toContain('--article-copy-cta-bg: #00274F')
+    expect(anchor.attributes('style')).toContain('--article-copy-cta-text: #FFFFFF')
   })
 
   it('marks modal CTAs with delegated tracker attributes', () => {

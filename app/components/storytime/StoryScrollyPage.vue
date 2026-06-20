@@ -74,6 +74,7 @@ const scrollyScenes = computed(() => props.scenes.slice(standaloneIntroCount.val
 const standaloneIntroSceneRefs: HTMLElement[] = []
 const activeStandaloneIntroIndex = ref<number | null>(standaloneIntroScenes.value.length ? 0 : null)
 const standaloneIntroProgressByIndex = ref<Record<number, number>>({})
+const standaloneIntroSignature = computed(() => standaloneIntroScenes.value.map(scene => scene.key).join('\u001f'))
 
 const flatSteps = computed(() => useStepStructure(scrollyScenes.value))
 const visualRefs = reactive<Record<string, any>>({})
@@ -165,6 +166,7 @@ const activeStandaloneIntroScene = computed(() => {
   return typeof index === 'number' ? standaloneIntroScenes.value[index] : null
 })
 const activeNavScene = computed(() => activeStandaloneIntroScene.value || activeScene.value)
+const shouldRenderScrollyVisual = computed(() => Boolean(activeScene.value) && !activeStandaloneIntroScene.value)
 
 const activeVisualRef = computed(() => {
   const scene = activeNavScene.value
@@ -237,6 +239,7 @@ const controlsResponsiveBottomOffsetPx = computed(() => {
   return Array.isArray(value) ? value : undefined
 })
 const controlsMobileCta = computed(() => controlsPresentation.value.mobileCta || null)
+const controlsReaction = computed(() => controlsPresentation.value.reaction || null)
 const controlsJumpAlign = computed(() => resolveJumpAlign(controlsPresentation.value))
 const controlsJumpEndOffsetPx = computed(() => resolveJumpEndOffsetPx(controlsPresentation.value))
 const controlsJumpTarget = computed(() => {
@@ -253,6 +256,38 @@ const controlsCanGoNext = computed(() => {
 })
 const visualTransitionMode = computed(() => {
   return normalizedPresentation.value.visualTransitionMode === 'cross-reveal' ? 'cross-reveal' : 'fade'
+})
+function firstRenderableString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value !== 'string') continue
+    const trimmed = value.trim()
+    if (trimmed) return trimmed
+  }
+
+  return ''
+}
+
+function sceneVisualBackground(scene: StoryScene | undefined) {
+  const visualProps = scene?.visual?.props as Record<string, unknown> | undefined
+  if (!visualProps || typeof visualProps !== 'object') return ''
+
+  return firstRenderableString(
+    visualProps.bgColor,
+    visualProps.backgroundColor,
+    visualProps.background,
+  )
+}
+
+const activeVisualBackgroundStyle = computed<Record<string, string>>(() => {
+  const styles: Record<string, string> = {
+    background: 'var(--story-active-visual-bg, var(--story-visual-bg))',
+  }
+  const background = sceneVisualBackground(activeScene.value)
+  if (background) {
+    styles['--story-active-visual-bg'] = background
+  }
+
+  return styles
 })
 const scrollHintPresentation = computed(() => normalizedPresentation.value.scrollHint || {})
 const scrollHintEnabled = computed(() => scrollHintPresentation.value.enabled === true)
@@ -378,9 +413,9 @@ const rootStyle = computed<Record<string, string>>(() => {
     '--story-divider': 'rgba(17, 17, 17, 0.14)',
     '--story-cta-bg': props.brandColor,
     '--story-cta-text': '#ffffff',
-    '--story-controls-bg': 'color-mix(in srgb, var(--story-visual-bg, #FFFFFF) 94%, var(--story-visual-text, #111111) 6%)',
-    '--story-controls-text': 'var(--story-visual-text, #111111)',
-    '--story-controls-divider': 'color-mix(in srgb, var(--story-controls-text, #111111) 18%, transparent)',
+    '--story-controls-bg': '#ffffff',
+    '--story-controls-text': '#334155',
+    '--story-controls-divider': 'rgba(203, 213, 225, 0.7)',
     '--story-controls-progress': 'var(--story-accent, var(--brand-primary, #007c7e))',
     // Legacy aliases.
     '--story-bg': '#ffffff',
@@ -809,7 +844,7 @@ function updateViewportVars() {
 function installViewportVarListeners() {
   updateViewportVars()
   requestAnimationFrame(updateViewportVars)
-  window.setTimeout(updateViewportVars, 250)
+  ;[100, 250, 500, 900].forEach((delay) => window.setTimeout(updateViewportVars, delay))
 
   window.addEventListener('resize', updateViewportVars, { passive: true })
   window.addEventListener('scroll', updateViewportVars, { passive: true })
@@ -834,6 +869,17 @@ function installViewportVarListeners() {
 watch(activeStep, () => {
   // no-op placeholder; hosts may attach their own watchers via v-model in the future
 })
+
+watch(standaloneIntroSignature, () => {
+  if (!standaloneIntroScenes.value.length) {
+    activeStandaloneIntroIndex.value = null
+    standaloneIntroProgressByIndex.value = {}
+    return
+  }
+
+  activeStandaloneIntroIndex.value = 0
+  nextTick(scheduleActiveSceneProgressUpdate)
+}, { flush: 'pre' })
 
 onMounted(() => {
   updateViewportWidth()
@@ -941,13 +987,16 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
       :data-au-card-mode="activeCardMode"
       :data-au-card-align="activeCardAlign"
       :data-au-force-viewport-card-stack="forceViewportCardStack ? 'true' : undefined"
+      :style="activeVisualBackgroundStyle"
     >
       <ScrollVisual
+        v-if="shouldRenderScrollyVisual"
         :scene-key="activeScene.key"
         :disable-parallax="activeScene.visual?.disableParallax === true"
         :transition-mode="visualTransitionMode"
         class="shrink-0 min-w-0 bg-[var(--story-visual-bg)] text-[var(--story-visual-text)]"
         :class="isFullLayout ? 'w-full md:z-20' : 'w-full md:w-[60%]'"
+        :style="activeVisualBackgroundStyle"
         @ready="onVisualReady"
       >
         <slot
@@ -959,6 +1008,13 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
           :visualRefs="visualRefs"
         />
       </ScrollVisual>
+      <div
+        v-else
+        class="story-scrolly-visual-placeholder sticky top-0 overflow-hidden flex items-center justify-center shrink-0 min-w-0 bg-[var(--story-visual-bg)] text-[var(--story-visual-text)]"
+        :class="isFullLayout ? 'w-full md:z-20' : 'w-full md:w-[60%]'"
+        :style="activeVisualBackgroundStyle"
+        aria-hidden="true"
+      />
 
       <article
         ref="stepsRootRef"
@@ -1016,6 +1072,7 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
           :bottom-offset-px="controlsBottomOffsetPx"
           :responsive-bottom-offset-px="controlsResponsiveBottomOffsetPx"
           :mobile-cta="controlsMobileCta"
+          :reaction="controlsReaction"
           :steps-root="stepsRootRef"
           step-selector=".step"
           :step-target-resolver="getStepTargetIndex"
@@ -1042,6 +1099,16 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
 
 .storytime-article-column {
   background-color: transparent;
+}
+
+.story-scrolly-visual-placeholder {
+  height: var(--story-layout-height, 100dvh);
+}
+
+@supports (height: 100lvh) {
+  .story-scrolly-visual-placeholder {
+    height: var(--story-layout-height, 100lvh);
+  }
 }
 
 .story-standalone-scene {

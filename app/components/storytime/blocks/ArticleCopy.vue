@@ -11,6 +11,8 @@ type CopyCta = {
   target?: string
   style?: CtaStyle
   tone?: CtaTone
+  color?: string
+  textColor?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -41,16 +43,26 @@ const cta = computed(() => {
     action: props.cta.action ?? 'url',
     style: props.cta.style ?? 'primary',
     tone: props.cta.tone ?? 'default',
+    color: typeof props.cta.color === 'string' ? props.cta.color.trim() : '',
+    textColor: typeof props.cta.textColor === 'string' ? props.cta.textColor.trim() : '',
   }
 })
 
 const ctaClasses = computed(() => {
   if (!cta.value) return ''
-  const base = 'inline-flex items-center gap-2 font-semibold px-4 py-2 rounded-lg transition'
-  const primary = 'bg-[var(--story-cta-bg)] text-[var(--story-cta-text)] hover:brightness-105'
-  const secondary = 'border border-[var(--story-cta-bg)] text-[var(--story-cta-bg)] hover:opacity-90'
+  const base = 'self-start inline-flex items-center gap-2 font-bold px-4 py-2 rounded-lg transition [font-family:var(--story-font-body)]'
+  const primary = 'bg-[var(--article-copy-cta-bg,var(--story-cta-bg))] text-[var(--article-copy-cta-text,var(--story-cta-text))] hover:brightness-105'
+  const secondary = 'border border-[var(--article-copy-cta-bg,var(--story-cta-bg))] text-[var(--article-copy-cta-bg,var(--story-cta-bg))] hover:opacity-90'
   const tone = cta.value.tone === 'emphasis' ? 'shadow-lg' : ''
   return `${base} ${cta.value.style === 'secondary' ? secondary : primary} ${tone}`
+})
+
+const ctaStyle = computed(() => {
+  if (!cta.value) return undefined
+  const style: Record<string, string> = {}
+  if (cta.value.color) style['--article-copy-cta-bg'] = cta.value.color
+  if (cta.value.textColor) style['--article-copy-cta-text'] = cta.value.textColor
+  return Object.keys(style).length ? style : undefined
 })
 
 function handleScroll(target: string) {
@@ -58,6 +70,15 @@ function handleScroll(target: string) {
   const el = document.querySelector(target)
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function targetAttr(action: { action: CtaActionType; target: string }) {
+  if (action.action !== 'url' || action.target.startsWith('mailto:')) return undefined
+  return '_blank'
+}
+
+function relAttr(action: { action: CtaActionType; target: string }) {
+  return targetAttr(action) === '_blank' ? 'noopener noreferrer' : undefined
 }
 </script>
 
@@ -115,7 +136,10 @@ function handleScroll(target: string) {
       <a
         v-if="cta.action === 'url'"
         :href="cta.target"
+        :target="targetAttr(cta)"
+        :rel="relAttr(cta)"
         :class="ctaClasses"
+        :style="ctaStyle"
         data-au-track="cta"
         :data-au-label="cta.label"
         :data-au-modifier="cta.action"
@@ -127,6 +151,7 @@ function handleScroll(target: string) {
         v-else-if="cta.action === 'modal'"
         type="button"
         :class="ctaClasses"
+        :style="ctaStyle"
         data-au-track="cta"
         :data-au-label="cta.label"
         :data-au-modifier="cta.action"
@@ -139,6 +164,7 @@ function handleScroll(target: string) {
         v-else
         type="button"
         :class="ctaClasses"
+        :style="ctaStyle"
         data-au-track="cta"
         :data-au-label="cta.label"
         :data-au-modifier="cta.action"

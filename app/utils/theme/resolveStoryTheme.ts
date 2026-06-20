@@ -518,24 +518,24 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     background: ctaBg,
     text: ensureAaTextOnBackground(ctaBg, ctaTextRaw),
   }
-  const controlsBgPreferred = resolveColorValue(
-    resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_background'),
-    slots,
-  ) ?? adjustHex(visualPair.background, isLight(visualPair.background) ? 0.94 : 1.06)
-  const controlsBgApplied = ensureUiContrastOnBackground(visualPair.background, controlsBgPreferred, 3)
+  const controlsBgRef = resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_background')
+  const controlsBgResolved = resolveColorValue(controlsBgRef, slots)
+  const controlsBgPreferred = controlsBgResolved ?? '#FFFFFF'
+  const controlsBgApplied = controlsBgResolved
+    ?? ensureUiContrastOnBackground(visualPair.background, controlsBgPreferred, 3)
   const controlsTextRaw = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_text'),
     slots,
-  ) ?? visualPair.text
+  ) ?? '#334155'
   const controlsPair = {
     background: controlsBgApplied,
     text: ensureAaTextOnBackground(controlsBgApplied, controlsTextRaw),
   }
-  const controlsProgressPreferred = resolveColorValue(
-    resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_progress'),
-    slots,
-  ) ?? ctaPair.background
-  const controlsProgressApplied = ensureUiContrastOnBackground(controlsPair.background, controlsProgressPreferred, 3)
+  const controlsProgressRef = resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_progress')
+  const controlsProgressResolved = resolveColorValue(controlsProgressRef, slots)
+  const controlsProgressPreferred = controlsProgressResolved ?? ctaPair.background
+  const controlsProgressApplied = controlsProgressResolved
+    ?? ensureUiContrastOnBackground(controlsPair.background, controlsProgressPreferred, 3)
 
   const fonts = Array.isArray(input.brandFonts) ? input.brandFonts : []
   const headingFontId =
