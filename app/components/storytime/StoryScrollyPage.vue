@@ -1046,7 +1046,7 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
           <template v-if="step.article.blocks?.length">
             <template v-for="(b, bi) in step.article.blocks" :key="bi">
               <component
-                v-if="b.type !== 'html' && b.type !== 'markdown'"
+                v-if="b.type !== 'html'"
                 :is="(blocks as any)[b.type]"
                 v-bind="b.props"
               />

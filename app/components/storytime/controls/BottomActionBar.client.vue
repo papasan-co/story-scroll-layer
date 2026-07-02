@@ -295,7 +295,7 @@ const showVolumeBar = ref(false)
 let stopWatchPlaying: (() => void) | null = null
 let stopWatchMuted: (() => void) | null = null
 let stopWatchVolume: (() => void) | null = null
-let volumeHideTimer: ReturnType<typeof window.setTimeout> | null = null
+let volumeHideTimer: number | null = null
 
 watch(
   active,
