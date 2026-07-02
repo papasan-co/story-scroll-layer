@@ -9,7 +9,11 @@ import type {
 
 const LG_BREAKPOINT = 1024
 
-export function isStepHiddenForViewport(el: HTMLElement, isDesktop = window.innerWidth > LG_BREAKPOINT): boolean {
+function elementWindow(el: HTMLElement): Window {
+  return el.ownerDocument.defaultView ?? window
+}
+
+export function isStepHiddenForViewport(el: HTMLElement, isDesktop = elementWindow(el).innerWidth > LG_BREAKPOINT): boolean {
   if (isDesktop && el.dataset.mobileOnly === 'true') return true
   if (!isDesktop && el.dataset.desktopOnly === 'true') return true
 
@@ -104,14 +108,17 @@ export function useIoScroller(
   let lastSeenInnerWidth = typeof window !== 'undefined' ? window.innerWidth : 0
   let lastSeenInnerHeight = typeof window !== 'undefined' ? window.innerHeight : 0
 
+  const ownerWindow = () => options.stepsRoot?.value?.ownerDocument.defaultView ?? window
+  const ownerDocument = () => options.stepsRoot?.value?.ownerDocument ?? document
   const isPinchZooming = () =>
     typeof window !== 'undefined'
-    && window.visualViewport != null
-    && window.visualViewport.scale > PINCH_ZOOM_SCALE_THRESHOLD
+    && ownerWindow().visualViewport != null
+    && ownerWindow().visualViewport.scale > PINCH_ZOOM_SCALE_THRESHOLD
   const isResizeLocked = () => Date.now() < resizeLockUntil
   const maybeLockOnResize = () => {
-    const width = window.innerWidth
-    const height = window.innerHeight
+    const win = ownerWindow()
+    const width = win.innerWidth
+    const height = win.innerHeight
     const widthDelta = Math.abs(width - lastSeenInnerWidth)
     const heightDelta = Math.abs(height - lastSeenInnerHeight)
 
@@ -128,7 +135,7 @@ export function useIoScroller(
     const root = options.stepsRoot?.value ?? null
     const list = root
       ? root.querySelectorAll<HTMLElement>(selector)
-      : document.querySelectorAll<HTMLElement>(selector)
+      : ownerDocument().querySelectorAll<HTMLElement>(selector)
     return Array.from(list)
   }
 
@@ -137,7 +144,7 @@ export function useIoScroller(
     return stepsEls
   }
 
-  const isDesktopViewport = () => window.innerWidth > LG_BREAKPOINT
+  const isDesktopViewport = () => ownerWindow().innerWidth > LG_BREAKPOINT
   const forceMobileSpacing = () => {
     const value = options.forceMobileSpacing
     if (typeof value === 'boolean') return value
@@ -152,11 +159,11 @@ export function useIoScroller(
         : undefined
     return resolved === 'card' ? 'card' : 'step'
   }
-  const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const prefersReducedMotion = () => ownerWindow().matchMedia('(prefers-reduced-motion: reduce)').matches
 
   function cancelProgrammaticScrollAnimation() {
     if (programmaticScrollRaf === null) return
-    window.cancelAnimationFrame(programmaticScrollRaf)
+    ownerWindow().cancelAnimationFrame(programmaticScrollRaf)
     programmaticScrollRaf = null
   }
 
@@ -188,14 +195,14 @@ export function useIoScroller(
       const progress = Math.min(1, (now - startedAt) / durationMs)
       setCurrent(start + distance * easeInOutCubic(progress))
       if (progress < 1) {
-        programmaticScrollRaf = window.requestAnimationFrame(tick)
+        programmaticScrollRaf = ownerWindow().requestAnimationFrame(tick)
         return
       }
 
       programmaticScrollRaf = null
     }
 
-    programmaticScrollRaf = window.requestAnimationFrame(tick)
+    programmaticScrollRaf = ownerWindow().requestAnimationFrame(tick)
   }
 
   const activationMode = (): StoryActivationMode => {
@@ -229,7 +236,7 @@ export function useIoScroller(
       ? Math.max(0, resolved)
       : 24
   }
-  const isMobileSpacingMode = () => window.innerWidth < LG_BREAKPOINT || forceMobileSpacing()
+  const isMobileSpacingMode = () => ownerWindow().innerWidth < LG_BREAKPOINT || forceMobileSpacing()
 
   const rootElement = () => options.scrollRoot && 'value' in options.scrollRoot
     ? options.scrollRoot.value
@@ -240,7 +247,7 @@ export function useIoScroller(
     const card = stepEl.querySelector<HTMLElement>('[data-article-card]')
     if (!card) return stepEl
 
-    const viewportHeight = rootElement()?.clientHeight || window.innerHeight || 0
+    const viewportHeight = rootElement()?.clientHeight || ownerWindow().innerHeight || 0
     const cardRect = card.getBoundingClientRect()
     if (viewportHeight > 0 && cardRect.height > viewportHeight * 0.9) {
       return card.querySelector<HTMLElement>(':scope > .article-copy-root, :scope > *') || card
@@ -330,7 +337,7 @@ export function useIoScroller(
       const shouldPeekCardFromBottom =
         align === 'center' &&
         targetElement === 'card' &&
-        window.matchMedia('(max-width: 1024px)').matches
+        ownerWindow().matchMedia('(max-width: 1024px)').matches
       const rootEl = rootElement()
       if (rootEl) {
         const rootRect = rootEl.getBoundingClientRect()
@@ -356,11 +363,12 @@ export function useIoScroller(
       } else {
         if (align === 'start' && targetElement === 'step') {
           if (safeDurationMs > 0 && behavior !== 'auto') {
-            const targetY = window.scrollY + el.getBoundingClientRect().top
-            const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+            const win = ownerWindow()
+            const targetY = win.scrollY + el.getBoundingClientRect().top
+            const maxScrollY = Math.max(0, ownerDocument().documentElement.scrollHeight - win.innerHeight)
             animateScrollTop(
-              () => window.scrollY || window.pageYOffset || 0,
-              (value) => window.scrollTo(0, value),
+              () => win.scrollY || win.pageYOffset || 0,
+              (value) => win.scrollTo(0, value),
               Math.max(0, Math.min(maxScrollY, targetY)),
               safeDurationMs,
             )
@@ -373,30 +381,31 @@ export function useIoScroller(
             })
           }
         } else {
+          const win = ownerWindow()
           const targetY = align === 'start'
-            ? window.scrollY + r.top
+            ? win.scrollY + r.top
             : align === 'end'
-            ? window.scrollY + r.top + r.height + safeEndOffsetPx - window.innerHeight
+            ? win.scrollY + r.top + r.height + safeEndOffsetPx - win.innerHeight
             : shouldPeekCardFromBottom
-            ? window.scrollY + r.top - window.innerHeight * 0.85
-            : window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
-          const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+            ? win.scrollY + r.top - win.innerHeight * 0.85
+            : win.scrollY + r.top - (win.innerHeight / 2 - r.height / 2)
+          const maxScrollY = Math.max(0, ownerDocument().documentElement.scrollHeight - win.innerHeight)
           if (safeDurationMs > 0 && behavior !== 'auto') {
             animateScrollTop(
-              () => window.scrollY || window.pageYOffset || 0,
-              (value) => window.scrollTo(0, value),
+              () => win.scrollY || win.pageYOffset || 0,
+              (value) => win.scrollTo(0, value),
               Math.max(0, Math.min(maxScrollY, targetY)),
               safeDurationMs,
             )
           } else {
             cancelProgrammaticScrollAnimation()
-            window.scrollTo({ top: targetY, behavior })
+            win.scrollTo({ top: targetY, behavior })
           }
         }
       }
     })
 
-    window.setTimeout(() => {
+    ownerWindow().setTimeout(() => {
       if (programmaticStepIndex !== target) return
       activateStep(target)
       programmaticStepIndex = null
@@ -425,8 +434,9 @@ export function useIoScroller(
       return
     }
 
-    const targetY = window.scrollY + r.top - (window.innerHeight / 2 - r.height / 2)
-    if (Math.abs(window.scrollY - targetY) > 2) window.scrollTo({ top: targetY, behavior: 'smooth' })
+    const win = ownerWindow()
+    const targetY = win.scrollY + r.top - (win.innerHeight / 2 - r.height / 2)
+    if (Math.abs(win.scrollY - targetY) > 2) win.scrollTo({ top: targetY, behavior: 'smooth' })
   }
   const snapThrottled = throttle(snapToStep, 500)
 
@@ -440,7 +450,8 @@ export function useIoScroller(
       return
     }
 
-    const supportsSVH = CSS.supports('height', '100svh')
+    const win = ownerWindow()
+    const supportsSVH = (win.CSS ?? CSS).supports('height', '100svh')
     const computeOffsets = (idx: number) => {
       const fs = flatSteps[idx]
       const article = fs?.article || {}
@@ -496,26 +507,26 @@ export function useIoScroller(
       return
     }
 
-    const raw = getComputedStyle(document.documentElement)
+    const raw = win.getComputedStyle(ownerDocument().documentElement)
       .getPropertyValue('--mobile-step-height')
       .trim() || '100vh'
 
     let px = 0
     if (raw.endsWith('dvh') || raw.endsWith('vh')) {
       const n = parseFloat(raw)
-      px = Math.round((window.innerHeight * n) / 100)
+      px = Math.round((win.innerHeight * n) / 100)
     } else if (raw.endsWith('px')) {
       px = Math.round(parseFloat(raw))
     } else {
       const n = parseFloat(raw)
-      px = Math.round((window.innerHeight * (isFinite(n) ? n : 100)) / 100)
+      px = Math.round((win.innerHeight * (isFinite(n) ? n : 100)) / 100)
     }
 
     steps.forEach((el, idx) => {
       const { topDvh, bottomDvh, minHeightDvh } = computeOffsets(idx)
 
       const targetMinPx = typeof minHeightDvh === 'number' && isFinite(minHeightDvh)
-        ? Math.round((window.innerHeight * minHeightDvh) / 100)
+        ? Math.round((win.innerHeight * minHeightDvh) / 100)
         : px
 
       const content = el.scrollHeight + 32
@@ -523,10 +534,10 @@ export function useIoScroller(
 
       const card = el.querySelector<HTMLElement>('[data-article-card]') || el
       card.style.marginTop = typeof topDvh === 'number' && isFinite(topDvh)
-        ? `${Math.round((window.innerHeight * topDvh) / 100)}px`
+        ? `${Math.round((win.innerHeight * topDvh) / 100)}px`
         : ''
       card.style.marginBottom = typeof bottomDvh === 'number' && isFinite(bottomDvh)
-        ? `${Math.round((window.innerHeight * bottomDvh) / 100)}px`
+        ? `${Math.round((win.innerHeight * bottomDvh) / 100)}px`
         : ''
     })
   }
@@ -555,7 +566,7 @@ export function useIoScroller(
       const currentRect = currentCard.getBoundingClientRect()
       const prevBottom = rootRect ? prevRect.bottom - rootRect.top : prevRect.bottom
       const currentTop = rootRect ? currentRect.top - rootRect.top : currentRect.top
-      const viewportHeight = rootEl?.clientHeight || window.innerHeight
+      const viewportHeight = rootEl?.clientHeight || ownerWindow().innerHeight
 
       if (prevBottom <= -MOBILE_PREV_EXIT_PX) {
         index = currentIndex
@@ -578,8 +589,8 @@ export function useIoScroller(
     if (!isMobileSpacingMode()) return
     if (isPinchZooming()) return
     if (isResizeLocked()) return
-    cancelAnimationFrame(raf)
-    raf = requestAnimationFrame(() => {
+    ownerWindow().cancelAnimationFrame(raf)
+    raf = ownerWindow().requestAnimationFrame(() => {
       if (isPinchZooming()) return
       if (isResizeLocked()) return
       if (activationMode() === 'card-center') {
@@ -599,7 +610,7 @@ export function useIoScroller(
 
     const rootEl = rootElement()
     const rootRect = rootEl?.getBoundingClientRect()
-    const viewportHeight = rootEl?.clientHeight || window.innerHeight
+    const viewportHeight = rootEl?.clientHeight || ownerWindow().innerHeight
     let bestIdx = -1
     let bestDist = Number.POSITIVE_INFINITY
 
@@ -655,8 +666,8 @@ export function useIoScroller(
     if (isPinchZooming()) return
     if (isResizeLocked()) return
 
-    cancelAnimationFrame(rafDesktop)
-    rafDesktop = requestAnimationFrame(() => {
+    ownerWindow().cancelAnimationFrame(rafDesktop)
+    rafDesktop = ownerWindow().requestAnimationFrame(() => {
       if (isPinchZooming()) return
       if (isResizeLocked()) return
       if (activationMode() === 'card-exit-next') {
@@ -672,7 +683,8 @@ export function useIoScroller(
   }
 
   onMounted(() => {
-    mq = window.matchMedia(`(min-width:${LG_BREAKPOINT}px)`)
+    const win = ownerWindow()
+    mq = win.matchMedia(`(min-width:${LG_BREAKPOINT}px)`)
     handleMediaChange(mq)
     mq.addEventListener('change', handleMediaChange)
 
@@ -719,7 +731,7 @@ export function useIoScroller(
               const rect = (e.target as HTMLElement).getBoundingClientRect()
               const center = rect.top + rect.height / 2
               const desiredFraction = Math.max(0.0, Math.min(1.0, (flatSteps[index]?.article as any)?.triggerCenterFraction ?? 0.7))
-              const desiredY = window.innerHeight * desiredFraction
+              const desiredY = win.innerHeight * desiredFraction
               const distance = Math.abs(center - desiredY)
               if (distance < bestDistance) {
                 bestDistance = distance
@@ -740,36 +752,37 @@ export function useIoScroller(
         )
 
         stepsEls.forEach((el) => io!.observe(el))
-        desktopScrollRoot = rootEl || window
+        desktopScrollRoot = rootEl || win
         if (activationMode() === 'card-center' || activationMode() === 'card-exit-next') {
           desktopScrollRoot.addEventListener('scroll', onScrollDesktop, { passive: true })
           onScrollDesktop()
         }
       } else {
-        addEventListener('scroll', onScrollMobile, { passive: true })
+        win.addEventListener('scroll', onScrollMobile, { passive: true })
         onScrollMobile()
       }
 
       handleResize()
-      lastSeenInnerWidth = window.innerWidth
-      lastSeenInnerHeight = window.innerHeight
+      lastSeenInnerWidth = win.innerWidth
+      lastSeenInnerHeight = win.innerHeight
       resizeHandler = () => {
         maybeLockOnResize()
         handleResize()
       }
-      window.addEventListener('resize', resizeHandler)
+      win.addEventListener('resize', resizeHandler)
 
       stepsReady.value = true
     })
   })
 
   onBeforeUnmount(() => {
-    if (resizeHandler) window.removeEventListener('resize', resizeHandler)
+    const win = ownerWindow()
+    if (resizeHandler) win.removeEventListener('resize', resizeHandler)
     mq?.removeEventListener('change', handleMediaChange)
     io?.disconnect()
-    removeEventListener('scroll', onScrollMobile)
+    win.removeEventListener('scroll', onScrollMobile)
     desktopScrollRoot?.removeEventListener('scroll', onScrollDesktop)
-    cancelAnimationFrame(rafDesktop)
+    win.cancelAnimationFrame(rafDesktop)
     cancelProgrammaticScrollAnimation()
     snapThrottled as any
   })
