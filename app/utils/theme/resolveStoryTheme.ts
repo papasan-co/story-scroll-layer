@@ -582,6 +582,12 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     '--story-narrative-bg': narrativePair.background,
     '--story-narrative-text': narrativePair.text,
     '--story-narrative-card-border': narrativeCardBorder,
+    // Overlay pair for narrative floating over the visual (tablet/mobile):
+    // the visual pair inverted. Contrast is symmetric, so the inverted pair
+    // keeps the visual pair's AA ratio, and its background is the one color
+    // guaranteed to contrast with the visual surface it floats on.
+    '--story-narrative-overlay-bg': visualPair.text,
+    '--story-narrative-overlay-text': visualPair.background,
     '--story-cta-bg': ctaPair.background,
     '--story-cta-text': ctaPair.text,
     '--story-controls-bg': controlsPair.background,
