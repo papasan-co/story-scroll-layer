@@ -44,3 +44,17 @@ const innerClass = computed(() => ({
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Below lg the card floats over the visual using the overlay pair, but copy
+   blocks hardcode text-[var(--story-narrative-text)] — dark text inside the
+   dark overlay card (invisible on phones). Shadow the variable inside the
+   card so those classes resolve to the overlay text color; at lg+ the card
+   sits in the rail and the narrative color applies untouched. CTA buttons
+   use the --story-cta-* pair and are unaffected. */
+@media (max-width: 1023.98px) {
+  [data-article-card]:not([data-article-empty='true']) {
+    --story-narrative-text: var(--story-narrative-overlay-text, #f2f2f2);
+  }
+}
+</style>
