@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.0.0/scene-presentation.schema.json",
+  "title": "StoryScenePresentation",
+  "description": "Presentation metadata stored on an Autumn story scene.",
+  "type": "object",
+  "x-runtime-keys": [
+    "flow",
+    "mobileLeadInDvh",
+    "mobileLeadOutDvh",
+    "mobileCardGapDvh",
+    "mobileMinHeightDvh",
+    "responsiveCardMode",
+    "responsiveBreakpoint"
+  ],
+  "properties": {
+    "flow": { "enum": ["scrolly", "standalone"] },
+    "layout": { "enum": ["split", "full"] },
+    "cardMode": { "enum": ["side-by-side", "overlay", "viewport-stack", "hidden"] },
+    "responsiveCardMode": { "enum": ["side-by-side", "overlay", "viewport-stack", "hidden"] },
+    "responsiveBreakpoint": { "type": "number" },
+    "cardAlign": { "enum": ["left", "center", "right"] },
+    "mobileLeadInDvh": { "type": "number" },
+    "mobileLeadOutDvh": { "type": "number" },
+    "mobileCardGapDvh": { "type": "number" },
+    "mobileMinHeightDvh": { "type": "number" },
+    "articleSteps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "align": { "enum": ["left", "center", "right"] },
+          "desktopOnly": { "type": "boolean" },
+          "mobileOnly": { "type": "boolean" },
+          "mobileTopOffsetDvh": { "type": "number" },
+          "mobileBottomOffsetDvh": { "type": "number" },
+          "mobileMinHeightDvh": { "type": "number" },
+          "triggerCenterFraction": { "type": "number", "minimum": 0, "maximum": 1 },
+          "blockIndex": { "type": "integer", "minimum": 0 },
+          "blockIndexes": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 }
+          },
+          "blockIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
