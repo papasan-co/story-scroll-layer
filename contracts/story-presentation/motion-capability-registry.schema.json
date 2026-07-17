@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.1.0/motion-capability-registry.schema.json",
+  "title": "MotionCapabilityRegistryV1",
+  "type": "object",
+  "properties": {
+    "contract": { "const": "MotionCapabilityRegistry.v1" },
+    "version": { "const": "1.0.0" },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*\\.v[1-9][0-9]*$" },
+          "executor": { "enum": ["pod_css", "storytime"] },
+          "triggers": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "enum": ["idle", "scene-enter", "scroll-progress", "hover", "focus"] }
+          },
+          "parameterSchemaRef": { "type": "string", "minLength": 1 },
+          "sourceFragmentPolicy": { "enum": ["none", "side-effect-free-css-only"] },
+          "reducedMotion": { "enum": ["disable", "final-state"] },
+          "focusPolicy": { "enum": ["preserve", "not-interactive"] },
+          "evidenceRequirements": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": ["animation-metadata", "computed-style", "normalized-progress", "target-geometry", "reduced-motion", "focus-state"]
+            }
+          }
+        },
+        "required": ["id", "executor", "triggers", "parameterSchemaRef", "sourceFragmentPolicy", "reducedMotion", "focusPolicy", "evidenceRequirements"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["contract", "version", "capabilities"],
+  "additionalProperties": false
+}

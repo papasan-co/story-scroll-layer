@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.onautumn.com/story-presentation/1.0.0/scene-presentation.schema.json",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.1.0/scene-presentation.schema.json",
   "title": "StoryScenePresentation",
   "description": "Presentation metadata stored on an Autumn story scene.",
   "type": "object",
@@ -11,7 +11,8 @@
     "mobileCardGapDvh",
     "mobileMinHeightDvh",
     "responsiveCardMode",
-    "responsiveBreakpoint"
+    "responsiveBreakpoint",
+    "motion"
   ],
   "properties": {
     "flow": { "enum": ["scrolly", "standalone"] },
@@ -24,6 +25,7 @@
     "mobileLeadOutDvh": { "type": "number" },
     "mobileCardGapDvh": { "type": "number" },
     "mobileMinHeightDvh": { "type": "number" },
+    "motion": { "$ref": "modes/motion.schema.json#/$defs/motion" },
     "articleSteps": {
       "type": "array",
       "items": {

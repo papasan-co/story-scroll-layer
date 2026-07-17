@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.onautumn.com/story-presentation/1.0.0/story-presentation.schema.json",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.1.0/story-presentation.schema.json",
   "title": "GeneratedStoryPresentation",
   "description": "Versioned presentation metadata for an Autumn story.",
   "type": "object",

@@ -1,4 +1,7 @@
-import type { GeneratedStoryPresentation } from './presentation.generated'
+import type {
+  GeneratedStoryPresentation,
+  StorySceneMotionPresentation,
+} from './presentation.generated'
 
 type RemoveIndexSignature<T> = {
   [K in keyof T as string extends K
@@ -13,6 +16,11 @@ type RemoveIndexSignature<T> = {
 export {
   STORY_PRESENTATION_CONTRACT_VERSION,
 } from './presentation.generated'
+export {
+  MOTION_CAPABILITIES,
+  MOTION_CAPABILITY_REGISTRY_HASH,
+  MOTION_CAPABILITY_REGISTRY_VERSION,
+} from './motionCapabilities.generated'
 export type {
   GeneratedStoryPresentation,
   StoryActivationMode,
@@ -29,6 +37,10 @@ export type {
   StoryJumpAlign,
   StoryResponsiveJumpAlignRule,
   StoryResponsiveNumberRule,
+  StoryMotionBinding,
+  StoryMotionEasing,
+  StoryMotionTargetKey,
+  StorySceneMotionPresentation,
   StoryScenePresentation,
   StoryScrollHintMode,
   StoryScrollHintPresentation,
@@ -80,6 +92,7 @@ export type StoryScene = {
   responsiveCardMode?: StoryCardMode
   responsiveBreakpoint?: number
   cardAlign?: StoryCardAlign
+  motion?: StorySceneMotionPresentation
   visual: StoryVisual
   /**
    * Scene defaults for mobile layout if per-step values are not provided.

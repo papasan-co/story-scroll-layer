@@ -1,8 +1,14 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
 import { STORY_PRESENTATION_CONTRACT_VERSION } from '../app/types/storytime/scenes'
+import {
+  MOTION_CAPABILITIES,
+  MOTION_CAPABILITY_REGISTRY_HASH,
+  MOTION_CAPABILITY_REGISTRY_VERSION,
+} from '../app/types/storytime/motionCapabilities.generated'
 
 type Fixture = {
   presentation: Record<string, unknown>
@@ -29,12 +35,26 @@ const sceneSchema = readJson<Record<string, unknown>>(
 const scrollySchema = readJson<Record<string, unknown>>(
   resolve(contractRoot, 'modes/scrolly.schema.json'),
 )
+const motionSchema = readJson<Record<string, unknown>>(
+  resolve(contractRoot, 'modes/motion.schema.json'),
+)
+const motionRegistrySchema = readJson<Record<string, unknown>>(
+  resolve(contractRoot, 'motion-capability-registry.schema.json'),
+)
+const motionRegistryPath = resolve(contractRoot, 'motion-capabilities.json')
+const motionRegistrySource = readFileSync(motionRegistryPath)
+const motionRegistry = JSON.parse(motionRegistrySource.toString('utf8')) as {
+  version: string
+  capabilities: { id: string; executor: string }[]
+}
 const version = readJson<{ version: string }>(resolve(contractRoot, 'version.json'))
 
 const ajv = new Ajv2020({ allErrors: true, strictSchema: false })
 ajv.addSchema(scrollySchema)
+ajv.addSchema(motionSchema)
 const validateStory = ajv.compile(storySchema)
 const validateScene = ajv.compile(sceneSchema)
+const validateMotionRegistry = ajv.compile(motionRegistrySchema)
 
 function errors(validate: ValidateFunction): ErrorObject[] {
   return validate.errors || []
@@ -113,5 +133,52 @@ describe('story presentation contract', () => {
 
   it('keeps the generated version constant aligned with version.json', () => {
     expect(STORY_PRESENTATION_CONTRACT_VERSION).toBe(version.version)
+  })
+
+  it('accepts bounded motion and rejects selector or parameter escape hatches', () => {
+    const validMotion = {
+      version: '1.0.0',
+      registryVersion: MOTION_CAPABILITY_REGISTRY_VERSION,
+      registryHash: MOTION_CAPABILITY_REGISTRY_HASH,
+      bindings: [
+        {
+          targetKey: 'headline',
+          capabilityId: 'story-reveal-on-enter.v1',
+          trigger: 'scene-enter',
+          parameters: { axis: 'y', distancePx: 24, durationMs: 480 },
+        },
+      ],
+    }
+
+    expect(validateScene({ motion: validMotion }), JSON.stringify(errors(validateScene), null, 2)).toBe(true)
+    expect(validateScene({
+      motion: {
+        ...validMotion,
+        bindings: [
+          {
+            ...validMotion.bindings[0],
+            selector: '.headline',
+            parameters: { axis: 'y', distancePx: 400 },
+          },
+        ],
+      },
+    })).toBe(false)
+    expect(errors(validateScene).some(error => error.instancePath.includes('/motion/bindings/0'))).toBe(true)
+  })
+
+  it('keeps the capability registry valid, generated, unique, and hashed', () => {
+    expect(validateMotionRegistry(motionRegistry), JSON.stringify(errors(validateMotionRegistry), null, 2)).toBe(true)
+    expect(new Set(motionRegistry.capabilities.map(capability => capability.id)).size)
+      .toBe(motionRegistry.capabilities.length)
+    expect(MOTION_CAPABILITY_REGISTRY_VERSION).toBe(motionRegistry.version)
+    expect(MOTION_CAPABILITY_REGISTRY_HASH).toBe(
+      createHash('sha256').update(motionRegistrySource).digest('hex'),
+    )
+    expect(MOTION_CAPABILITIES).toEqual(motionRegistry.capabilities)
+
+    const serializedMotionSchema = JSON.stringify(motionSchema)
+    for (const capability of motionRegistry.capabilities) {
+      expect(serializedMotionSchema.includes(capability.id)).toBe(capability.executor === 'storytime')
+    }
   })
 })
