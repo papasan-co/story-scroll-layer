@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.0.0/story-presentation.schema.json",
+  "title": "GeneratedStoryPresentation",
+  "description": "Versioned presentation metadata for an Autumn story.",
+  "type": "object",
+  "$defs": {
+    "flowMode": {
+      "title": "StoryFlowMode",
+      "enum": ["scrolly", "timed-path"]
+    },
+    "visualTransitionMode": {
+      "title": "StoryVisualTransitionMode",
+      "enum": ["fade", "cross-reveal"]
+    }
+  },
+  "properties": {
+    "flowMode": { "$ref": "#/$defs/flowMode" },
+    "navMode": { "type": "string" },
+    "brandLabel": { "type": "string" },
+    "navBrandLabel": { "type": "string" },
+    "navAriaLabel": { "type": "string" },
+    "chapters": {
+      "type": "array",
+      "items": { "$ref": "modes/scrolly.schema.json#/$defs/chapter" }
+    },
+    "controls": { "$ref": "modes/scrolly.schema.json#/$defs/controls" },
+    "chapterNav": { "$ref": "modes/scrolly.schema.json#/$defs/chapterNav" },
+    "scrollHint": { "$ref": "modes/scrolly.schema.json#/$defs/scrollHint" },
+    "scroll": { "$ref": "modes/scrolly.schema.json#/$defs/scroll" },
+    "visualTransitionMode": { "$ref": "#/$defs/visualTransitionMode" }
+  },
+  "additionalProperties": true
+}

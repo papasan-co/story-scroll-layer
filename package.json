@@ -3,12 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "contracts:generate": "node scripts/story-presentation-contract.mjs generate",
+    "contracts:sync": "node scripts/story-presentation-contract.mjs sync",
     "test:unit": "vitest run"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.6",
     "@vue/test-utils": "^2.4.6",
+    "ajv": "^8.20.0",
     "happy-dom": "^15.11.7",
+    "json-schema-to-typescript": "^15.0.4",
     "vitest": "^2.1.9",
     "vue": "^3.5.13"
   }

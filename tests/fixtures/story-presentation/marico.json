@@ -1,0 +1,109 @@
+{
+  "presentation": {
+    "navMode": "chapter-nav",
+    "navBrandLabel": "Marico Consulting",
+    "navAriaLabel": "Marico Consulting sections",
+    "controls": {
+      "controlMode": "arrows",
+      "keyboard": true,
+      "showShare": false,
+      "showProgress": false,
+      "showVideoControls": false,
+      "hideOnMobileBelow": 900,
+      "autoHideOnMobile": false,
+      "bottomOffsetPx": 16,
+      "jumpAlign": "center",
+      "responsiveJumpAlign": [
+        { "maxWidth": 1100, "value": "end" }
+      ],
+      "responsiveJumpEndOffsetPx": [
+        { "maxWidth": 900, "value": 96 },
+        { "minWidth": 901, "maxWidth": 1100, "value": 76 }
+      ],
+      "jumpTarget": "card",
+      "mobileCta": {
+        "url": "mailto:hello@marico.example",
+        "label": "Book a free consultation",
+        "suffix": "→",
+        "ariaLabel": "Book a free consultation with Marico Consulting",
+        "target": "_blank",
+        "trackLabel": "book-consultation",
+        "trackModifier": "mobile-cta"
+      }
+    },
+    "chapterNav": {
+      "chromeMode": "default",
+      "showToggle": true,
+      "inactiveLabel": "Intro",
+      "jumpAlign": "center",
+      "responsiveJumpAlign": [
+        { "maxWidth": 1100, "value": "end" }
+      ],
+      "responsiveJumpEndOffsetPx": [
+        { "maxWidth": 900, "value": 96 },
+        { "minWidth": 901, "maxWidth": 1100, "value": 76 }
+      ],
+      "jumpTarget": "card",
+      "mobileMode": "drawer",
+      "brand": {
+        "mode": "image",
+        "label": "Marico Consulting",
+        "sceneKeys": ["hero"],
+        "logoUrl": "asset:marico-logo-horizontal",
+        "mobileLogoUrl": "asset:marico-logo-symbol"
+      },
+      "cta": {
+        "url": "mailto:hello@marico.example",
+        "label": "Book Consultation",
+        "ariaLabel": "Book a consultation with Marico Consulting",
+        "target": "_blank",
+        "trackLabel": "book-consultation",
+        "trackModifier": "mailto"
+      },
+      "darkSceneKeys": ["solution", "trust"]
+    },
+    "scrollHint": { "enabled": false },
+    "scroll": {
+      "jumpTarget": "card",
+      "activationMode": "card-exit-next",
+      "activationAnchor": 0.7,
+      "activationHysteresisPx": 24,
+      "introExitTarget": "step-target",
+      "introExitDurationMs": 1300,
+      "introReturnDurationMs": 1300,
+      "disableSnap": true,
+      "stepMinHeight": "150svh",
+      "viewportStackStepMinHeight": "160svh"
+    },
+    "visualTransitionMode": "fade",
+    "chapters": [
+      { "id": "pain", "label": "Pain", "sceneKeys": ["empathy", "cost"] },
+      { "id": "fix", "label": "Fix", "sceneKeys": ["solution", "services"] },
+      { "id": "book", "label": "Book", "sceneKeys": ["cta"] }
+    ]
+  },
+  "scenes": [
+    {
+      "flow": "standalone",
+      "layout": "full",
+      "cardMode": "hidden",
+      "mobileLeadOutDvh": 0,
+      "articleSteps": [
+        { "align": "center", "blockIndex": 0 }
+      ]
+    },
+    {
+      "layout": "split",
+      "cardMode": "side-by-side",
+      "responsiveCardMode": "viewport-stack",
+      "responsiveBreakpoint": 900,
+      "mobileLeadInDvh": 18,
+      "mobileLeadOutDvh": 24,
+      "mobileCardGapDvh": 10,
+      "mobileMinHeightDvh": 120,
+      "articleSteps": [
+        { "align": "right", "mobileOnly": false, "blockIndex": 0 }
+      ]
+    }
+  ]
+}

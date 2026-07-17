@@ -9,20 +9,44 @@ import type {
   StoryScrollHintPresentation,
 } from '../../types/storytime/scenes'
 
+const chapterNavChromeModes: Record<StoryChapterNavChromeMode, true> = {
+  default: true,
+  'floating-rail': true,
+}
+
+const chapterNavBrandModes: Record<StoryChapterNavBrandMode, true> = {
+  text: true,
+  image: true,
+  mark: true,
+  none: true,
+}
+
+const controlsModes: Record<StoryControlsMode, true> = {
+  default: true,
+  minimal: true,
+  pill: true,
+  arrows: true,
+}
+
+const scrollHintModes: Record<StoryScrollHintMode, true> = {
+  default: true,
+  corner: true,
+}
+
 function isChapterNavChromeMode(value: unknown): value is StoryChapterNavChromeMode {
-  return value === 'default' || value === 'floating-rail'
+  return typeof value === 'string' && value in chapterNavChromeModes
 }
 
 function isBrandMode(value: unknown): value is StoryChapterNavBrandMode {
-  return value === 'text' || value === 'image' || value === 'mark' || value === 'none'
+  return typeof value === 'string' && value in chapterNavBrandModes
 }
 
 function isControlsMode(value: unknown): value is StoryControlsMode {
-  return value === 'default' || value === 'minimal' || value === 'pill' || value === 'arrows'
+  return typeof value === 'string' && value in controlsModes
 }
 
 function isScrollHintMode(value: unknown): value is StoryScrollHintMode {
-  return value === 'default' || value === 'corner'
+  return typeof value === 'string' && value in scrollHintModes
 }
 
 export function normalizeChapterNavPresentation(
