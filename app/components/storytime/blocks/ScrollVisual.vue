@@ -1,5 +1,8 @@
 <template>
-  <figure class="story-visual-frame sticky top-0 w-full overflow-hidden flex items-center justify-center">
+  <figure
+    class="story-visual-frame sticky top-0 w-full overflow-hidden flex items-center justify-center"
+    :data-scene-key="sceneKey"
+  >
     <Transition
       :name="transitionMode === 'cross-reveal' ? 'cross-reveal' : 'fade'"
       :mode="transitionMode === 'cross-reveal' ? undefined : 'out-in'"

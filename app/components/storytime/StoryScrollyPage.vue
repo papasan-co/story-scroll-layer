@@ -19,6 +19,11 @@ import {
   storyNarrativeCardCssVars,
 } from '../../utils/storytime/resolveNarrativeChrome'
 import { normalizeStoryPresentation } from '../../utils/storytime/presentation'
+import {
+  createSceneMotionController,
+  StoryMotionBindingError,
+  type StoryMotionController,
+} from '../../utils/storytime/motion'
 
 import ScrollVisual from './blocks/ScrollVisual.vue'
 import ArticleStep from './blocks/ArticleStep.vue'
@@ -28,6 +33,10 @@ import ArticleMediaCaption from './blocks/ArticleMediaCaption.vue'
 import BottomActionBar from './controls/BottomActionBar.client.vue'
 import StorySideProgressRail from './controls/StorySideProgressRail.client.vue'
 import StoryChapterNav from './StoryChapterNav.vue'
+
+const emit = defineEmits<{
+  motionError: [{ sceneKey: string; diagnostics: StoryMotionBindingError['diagnostics'] }]
+}>()
 
 const props = withDefaults(defineProps<{
   scenes: StoryScene[]
@@ -349,6 +358,40 @@ const showScrollHint = computed(() => {
 })
 
 let viewportVarsCleanup: (() => void) | null = null
+let activeMotionController: StoryMotionController | null = null
+let activeMotionSetupId = 0
+
+async function syncActiveSceneMotion() {
+  const setupId = ++activeMotionSetupId
+  activeMotionController?.destroy()
+  activeMotionController = null
+
+  if (!import.meta.client) return
+  const scene = activeScene.value
+  if (!scene?.motion) return
+
+  await nextTick()
+  if (setupId !== activeMotionSetupId || !scrollyRootRef.value) return
+
+  try {
+    activeMotionController = createSceneMotionController({
+      root: scrollyRootRef.value,
+      sceneKey: scene.key,
+      presentation: scene.motion,
+    })
+    activeMotionController.update({
+      active: true,
+      progress: activeSceneProgress.value,
+    })
+  } catch (error) {
+    if (error instanceof StoryMotionBindingError) {
+      emit('motionError', { sceneKey: scene.key, diagnostics: error.diagnostics })
+      return
+    }
+
+    throw error
+  }
+}
 
 function updateViewportWidth() {
   viewportWidth.value = window.innerWidth
@@ -882,6 +925,7 @@ function onVisualReady(key: string) {
   if (s && (s as any).visual?.onEnter && s.key === key) {
     ;(s as any).visual.onEnter?.({ step: stepMeta.localStep, ref: visualRefs[key] })
   }
+  if (s?.key === key) void syncActiveSceneMotion()
 }
 
 function updateViewportVars() {
@@ -967,7 +1011,20 @@ onBeforeUnmount(() => {
     activeSceneProgressRaf = null
   }
   cancelIntroScrollAnimation()
+  activeMotionSetupId += 1
+  activeMotionController?.destroy()
+  activeMotionController = null
   viewportVarsCleanup?.()
+})
+
+watch(
+  [() => activeScene.value?.key, () => activeScene.value?.motion],
+  () => void syncActiveSceneMotion(),
+  { flush: 'post' },
+)
+
+watch(activeSceneProgress, (progress) => {
+  activeMotionController?.update({ active: true, progress })
 })
 
 watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
