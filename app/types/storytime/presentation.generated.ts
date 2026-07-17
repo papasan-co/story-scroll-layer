@@ -141,6 +141,14 @@ export interface StoryScrollPresentation {
   [k: string]: unknown
 }
 
+export type StoryMotionBinding =
+  | StoryRevealOnEnterBinding
+  | StoryScrollProgressTransformBinding
+  | StoryCountUpOnEnterBinding
+  | StoryProgressRevealBinding
+export type StoryMotionTargetKey = string
+export type StoryMotionEasing = 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out'
+
 /**
  * Presentation metadata stored on an Autumn story scene.
  */
@@ -155,6 +163,7 @@ export interface StoryScenePresentation {
   mobileLeadOutDvh?: number
   mobileCardGapDvh?: number
   mobileMinHeightDvh?: number
+  motion?: StorySceneMotionPresentation
   articleSteps?: {
     align?: 'left' | 'center' | 'right'
     desktopOnly?: boolean
@@ -170,5 +179,70 @@ export interface StoryScenePresentation {
   }[]
   [k: string]: unknown
 }
+export interface StorySceneMotionPresentation {
+  version: '1.0.0'
+  registryVersion: '1.0.0'
+  registryHash: string
+  /**
+   * @maxItems 64
+   */
+  bindings: StoryMotionBinding[]
+}
+export interface StoryRevealOnEnterBinding {
+  targetKey: StoryMotionTargetKey
+  capabilityId: 'story-reveal-on-enter.v1'
+  trigger: 'scene-enter'
+  parameters: StoryRevealOnEnterParameters
+}
+export interface StoryRevealOnEnterParameters {
+  axis?: 'x' | 'y' | 'none'
+  distancePx?: number
+  durationMs?: number
+  delayMs?: number
+  staggerMs?: number
+  easing?: StoryMotionEasing
+}
+export interface StoryScrollProgressTransformBinding {
+  targetKey: StoryMotionTargetKey
+  capabilityId: 'story-scroll-progress-transform.v1'
+  trigger: 'scroll-progress'
+  parameters: StoryScrollProgressTransformParameters
+}
+export interface StoryScrollProgressTransformParameters {
+  axis: 'x' | 'y'
+  from: number
+  to: number
+  unit: 'px' | 'percent'
+  opacityFrom?: number
+  opacityTo?: number
+}
+export interface StoryCountUpOnEnterBinding {
+  targetKey: StoryMotionTargetKey
+  capabilityId: 'story-count-up-on-enter.v1'
+  trigger: 'scene-enter'
+  parameters: StoryCountUpOnEnterParameters
+}
+export interface StoryCountUpOnEnterParameters {
+  from: number
+  to: number
+  durationMs?: number
+  delayMs?: number
+  decimals?: number
+  prefix?: string
+  suffix?: string
+}
+export interface StoryProgressRevealBinding {
+  targetKey: StoryMotionTargetKey
+  capabilityId: 'story-progress-reveal.v1'
+  trigger: 'scene-enter' | 'scroll-progress'
+  parameters: StoryProgressRevealParameters
+}
+export interface StoryProgressRevealParameters {
+  fromPercent: number
+  toPercent: number
+  durationMs?: number
+  delayMs?: number
+  easing?: StoryMotionEasing
+}
 
-export const STORY_PRESENTATION_CONTRACT_VERSION = '1.0.0' as const
+export const STORY_PRESENTATION_CONTRACT_VERSION = '1.1.0' as const

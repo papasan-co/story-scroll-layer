@@ -1,0 +1,66 @@
+{
+  "contract": "MotionCapabilityRegistry.v1",
+  "version": "1.0.0",
+  "capabilities": [
+    {
+      "id": "pod-css-keyframes.v1",
+      "executor": "pod_css",
+      "triggers": ["idle", "scene-enter"],
+      "parameterSchemaRef": "harvested-css-keyframes.v1",
+      "sourceFragmentPolicy": "side-effect-free-css-only",
+      "reducedMotion": "disable",
+      "focusPolicy": "not-interactive",
+      "evidenceRequirements": ["animation-metadata", "computed-style", "reduced-motion"]
+    },
+    {
+      "id": "pod-css-transition.v1",
+      "executor": "pod_css",
+      "triggers": ["hover", "focus"],
+      "parameterSchemaRef": "harvested-css-transition.v1",
+      "sourceFragmentPolicy": "side-effect-free-css-only",
+      "reducedMotion": "disable",
+      "focusPolicy": "preserve",
+      "evidenceRequirements": ["computed-style", "target-geometry", "reduced-motion", "focus-state"]
+    },
+    {
+      "id": "story-reveal-on-enter.v1",
+      "executor": "storytime",
+      "triggers": ["scene-enter"],
+      "parameterSchemaRef": "modes/motion.schema.json#/$defs/revealParameters",
+      "sourceFragmentPolicy": "none",
+      "reducedMotion": "final-state",
+      "focusPolicy": "preserve",
+      "evidenceRequirements": ["animation-metadata", "computed-style", "target-geometry", "reduced-motion", "focus-state"]
+    },
+    {
+      "id": "story-scroll-progress-transform.v1",
+      "executor": "storytime",
+      "triggers": ["scroll-progress"],
+      "parameterSchemaRef": "modes/motion.schema.json#/$defs/scrollTransformParameters",
+      "sourceFragmentPolicy": "none",
+      "reducedMotion": "final-state",
+      "focusPolicy": "not-interactive",
+      "evidenceRequirements": ["computed-style", "normalized-progress", "target-geometry", "reduced-motion"]
+    },
+    {
+      "id": "story-count-up-on-enter.v1",
+      "executor": "storytime",
+      "triggers": ["scene-enter"],
+      "parameterSchemaRef": "modes/motion.schema.json#/$defs/countUpParameters",
+      "sourceFragmentPolicy": "none",
+      "reducedMotion": "final-state",
+      "focusPolicy": "not-interactive",
+      "evidenceRequirements": ["computed-style", "animation-metadata", "reduced-motion"]
+    },
+    {
+      "id": "story-progress-reveal.v1",
+      "executor": "storytime",
+      "triggers": ["scene-enter", "scroll-progress"],
+      "parameterSchemaRef": "modes/motion.schema.json#/$defs/progressRevealParameters",
+      "sourceFragmentPolicy": "none",
+      "reducedMotion": "final-state",
+      "focusPolicy": "not-interactive",
+      "evidenceRequirements": ["computed-style", "normalized-progress", "target-geometry", "reduced-motion"]
+    }
+  ]
+}
