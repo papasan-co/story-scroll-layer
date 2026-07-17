@@ -71,3 +71,42 @@ The layer includes a simplified bottom control strip:
   - `cms-frontend/app/pages/[org]/stories/storytime-preview.vue`
   - Example: `/acme/stories/storytime-preview?pod=hero-image`
 
+## Analytics integration contract (AUM-497)
+
+The Autumn first-party tracker bundle (hosted by `edge-renderer`, sourced
+from `cms-story-components`) is **DOM-driven** — it observes the rendered
+output of this layer through stable data attributes rather than coupling
+to Vue composables. This contract lets the layer evolve internally without
+breaking analytics emission.
+
+### Attributes the layer SHALL emit
+
+Scene root elements (currently `.step` inside `StoryScrollyPage`):
+
+| Attribute | Source | Notes |
+| --- | --- | --- |
+| `data-au-scene-id` | `scene.key` (a UUID when served from cms-backend) | Multiple `.step` elements may share the same id when one scene has multiple narrative beats; the tracker dedupes by id within a session. |
+| `data-au-scene-index` | step's `sceneIdx` | Zero-based position in `scenes[]`. |
+
+Interactive elements (currently `ArticleCTA`'s `<a>`/`<button>`):
+
+| Attribute | Source | Notes |
+| --- | --- | --- |
+| `data-au-track` | constant — `"cta"`/`"pod"`/`"link"`/`"form"` | The tracker filters click events to elements bearing this. |
+| `data-au-label` | the visible CTA label | Surfaces in the "top interactions" rollup. |
+| `data-au-modifier` | `action.action` (`"url"` \| `"modal"` \| `"scroll"`) | Distinguishes CTA variants in analytics. |
+
+Future interactive surfaces inside pods (carousel arrows, form submits,
+etc.) will add `data-au-pod-slug` and `data-au-pod-version` so the rollup
+can attribute interactions to specific pods.
+
+### What this contract guarantees
+
+- The tracker bundle does NOT import any Vue composable from this layer.
+- The tracker observes the DOM via `IntersectionObserver` (scene visibility)
+  and a delegated click handler (`document.addEventListener('click', …,
+  { capture: true })`).
+- Removing, renaming, or replacing any composable is safe as long as the
+  data attributes continue to appear on the rendered DOM with the same
+  semantics.
+

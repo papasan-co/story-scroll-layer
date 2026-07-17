@@ -29,6 +29,7 @@ export type StoryTheme = {
     heading_font_id?: string | null
     body_font_id?: string | null
   } | null
+  stylesheets?: string[] | null
 } | null
 
 export type BrandFontLike = {
@@ -66,7 +67,6 @@ export type ResolveStoryThemeResult = {
   stylesheets: string[]
 }
 
-const FALLBACK_SURFACE = '#FFFFFF'
 const FALLBACK_INK = '#111111'
 const FALLBACK_PRIMARY = '#007C7E'
 const FALLBACK_WHITE = '#FFFFFF'
@@ -380,6 +380,52 @@ function isLight(hex: string): boolean {
   return luminance(hex) > 0.75
 }
 
+function slotPreference(slot: BrandSlot): number {
+  const key = slot.key.toLowerCase()
+
+  if (key.includes('brand') || key.includes('primary') || key.includes('accent')) return 0
+  if (key.includes('secondary') || key.includes('support') || key.includes('highlight')) return 1
+  if (key.includes('surface') || key.includes('paper') || key.includes('background') || key.includes('canvas')) return 2
+  if (key.includes('neutral') || key.includes('white')) return 3
+
+  return 4
+}
+
+function pickAccessiblePalettePair(slots: BrandSlot[], textCandidate: string): { background: string; text: string } | null {
+  const darkTextCandidates = [...new Set([textCandidate, '#111111', '#000000'])]
+
+  for (const minRatio of [7, 4.5]) {
+    const matches = slots.flatMap((slot) =>
+      darkTextCandidates
+        .map((text) => ({
+          slot,
+          text,
+          ratio: contrastRatio(slot.hex, text),
+        }))
+        .filter((candidate) => candidate.ratio >= minRatio),
+    )
+
+    matches.sort((a, b) => {
+      const priorityDelta = slotPreference(a.slot) - slotPreference(b.slot)
+      if (priorityDelta !== 0) return priorityDelta
+
+      const ratioDelta = b.ratio - a.ratio
+      if (ratioDelta !== 0) return ratioDelta
+
+      return luminance(b.slot.hex) - luminance(a.slot.hex)
+    })
+
+    if (matches.length > 0) {
+      return {
+        background: matches[0]!.slot.hex,
+        text: matches[0]!.text,
+      }
+    }
+  }
+
+  return null
+}
+
 function semanticDefaults(brand: BrandLike | null | undefined, slots: BrandSlot[]) {
   const primary = tokenPrimary(brand)
     ?? findSlotByHints(slots, ['brand', 'primary', 'accent'])?.hex
@@ -387,32 +433,13 @@ function semanticDefaults(brand: BrandLike | null | undefined, slots: BrandSlot[
 
   const textCandidate = findSlotByHints(slots, ['ink', 'text', 'support-1', 'neutral-900', 'black'])?.hex
     ?? FALLBACK_INK
-
-  const lightSurfaceCandidates = slots
-    .filter((slot) => {
-      const key = slot.key.toLowerCase()
-      return (
-        key.includes('surface')
-        || key.includes('paper')
-        || key.includes('background')
-        || key.includes('canvas')
-        || key.includes('neutral')
-        || key.includes('white')
-      )
-    })
-    .map((slot) => slot.hex)
-    .filter((hex, idx, all) => all.indexOf(hex) === idx)
-    .sort((a, b) => luminance(b) - luminance(a))
-
-  const preferredSurface = [
-    ...lightSurfaceCandidates,
-    FALLBACK_SURFACE,
-  ].find((hex) => {
-    if (!isLight(hex)) return false
-    return contrastRatio(hex, textCandidate) >= 4.5
-  }) ?? FALLBACK_SURFACE
-
-  const textPair = ensureAaPair(preferredSurface, textCandidate)
+  const textPair = pickAccessiblePalettePair(slots, textCandidate)
+    ?? {
+      background: primary,
+      text: contrastRatio(primary, '#FFFFFF') >= 4.5
+        ? '#FFFFFF'
+        : ensureAaTextOnBackground(primary, '#FFFFFF'),
+    }
 
   const ctaCandidates = [
     primary,
@@ -491,24 +518,24 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     background: ctaBg,
     text: ensureAaTextOnBackground(ctaBg, ctaTextRaw),
   }
-  const controlsBgPreferred = resolveColorValue(
-    resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_background'),
-    slots,
-  ) ?? adjustHex(visualPair.background, isLight(visualPair.background) ? 0.94 : 1.06)
-  const controlsBgApplied = ensureUiContrastOnBackground(visualPair.background, controlsBgPreferred, 3)
+  const controlsBgRef = resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_background')
+  const controlsBgResolved = resolveColorValue(controlsBgRef, slots)
+  const controlsBgPreferred = controlsBgResolved ?? '#FFFFFF'
+  const controlsBgApplied = controlsBgResolved
+    ?? ensureUiContrastOnBackground(visualPair.background, controlsBgPreferred, 3)
   const controlsTextRaw = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_text'),
     slots,
-  ) ?? visualPair.text
+  ) ?? '#334155'
   const controlsPair = {
     background: controlsBgApplied,
     text: ensureAaTextOnBackground(controlsBgApplied, controlsTextRaw),
   }
-  const controlsProgressPreferred = resolveColorValue(
-    resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_progress'),
-    slots,
-  ) ?? ctaPair.background
-  const controlsProgressApplied = ensureUiContrastOnBackground(controlsPair.background, controlsProgressPreferred, 3)
+  const controlsProgressRef = resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'controls_progress')
+  const controlsProgressResolved = resolveColorValue(controlsProgressRef, slots)
+  const controlsProgressPreferred = controlsProgressResolved ?? ctaPair.background
+  const controlsProgressApplied = controlsProgressResolved
+    ?? ensureUiContrastOnBackground(controlsPair.background, controlsProgressPreferred, 3)
 
   const fonts = Array.isArray(input.brandFonts) ? input.brandFonts : []
   const headingFontId =
@@ -535,6 +562,7 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
 
   const stylesheets = [
     typeof effectiveBrand?.css_path === 'string' ? effectiveBrand.css_path : null,
+    ...(Array.isArray(storyTheme?.stylesheets) ? storyTheme.stylesheets : []),
     headingFont.stylesheet,
     bodyFont.stylesheet,
   ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
@@ -554,6 +582,12 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     '--story-narrative-bg': narrativePair.background,
     '--story-narrative-text': narrativePair.text,
     '--story-narrative-card-border': narrativeCardBorder,
+    // Overlay pair for narrative floating over the visual (tablet/mobile):
+    // the visual pair inverted. Contrast is symmetric, so the inverted pair
+    // keeps the visual pair's AA ratio, and its background is the one color
+    // guaranteed to contrast with the visual surface it floats on.
+    '--story-narrative-overlay-bg': visualPair.text,
+    '--story-narrative-overlay-text': visualPair.background,
     '--story-cta-bg': ctaPair.background,
     '--story-cta-text': ctaPair.text,
     '--story-controls-bg': controlsPair.background,

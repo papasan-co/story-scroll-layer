@@ -11,6 +11,8 @@ type CopyCta = {
   target?: string
   style?: CtaStyle
   tone?: CtaTone
+  color?: string
+  textColor?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -41,16 +43,26 @@ const cta = computed(() => {
     action: props.cta.action ?? 'url',
     style: props.cta.style ?? 'primary',
     tone: props.cta.tone ?? 'default',
+    color: typeof props.cta.color === 'string' ? props.cta.color.trim() : '',
+    textColor: typeof props.cta.textColor === 'string' ? props.cta.textColor.trim() : '',
   }
 })
 
 const ctaClasses = computed(() => {
   if (!cta.value) return ''
-  const base = 'inline-flex items-center gap-2 font-semibold px-4 py-2 rounded-lg transition'
-  const primary = 'bg-[var(--story-cta-bg)] text-[var(--story-cta-text)] hover:brightness-105'
-  const secondary = 'border border-[var(--story-cta-bg)] text-[var(--story-cta-bg)] hover:opacity-90'
+  const base = 'self-start inline-flex items-center gap-2 font-bold px-4 py-2 rounded-lg transition [font-family:var(--story-font-body)]'
+  const primary = 'bg-[var(--article-copy-cta-bg,var(--story-cta-bg))] text-[var(--article-copy-cta-text,var(--story-cta-text))] hover:brightness-105'
+  const secondary = 'border border-[var(--article-copy-cta-bg,var(--story-cta-bg))] text-[var(--article-copy-cta-bg,var(--story-cta-bg))] hover:opacity-90'
   const tone = cta.value.tone === 'emphasis' ? 'shadow-lg' : ''
   return `${base} ${cta.value.style === 'secondary' ? secondary : primary} ${tone}`
+})
+
+const ctaStyle = computed(() => {
+  if (!cta.value) return undefined
+  const style: Record<string, string> = {}
+  if (cta.value.color) style['--article-copy-cta-bg'] = cta.value.color
+  if (cta.value.textColor) style['--article-copy-cta-text'] = cta.value.textColor
+  return Object.keys(style).length ? style : undefined
 })
 
 function handleScroll(target: string) {
@@ -59,14 +71,23 @@ function handleScroll(target: string) {
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
+
+function targetAttr(action: { action: CtaActionType; target: string }) {
+  if (action.action !== 'url' || action.target.startsWith('mailto:')) return undefined
+  return '_blank'
+}
+
+function relAttr(action: { action: CtaActionType; target: string }) {
+  return targetAttr(action) === '_blank' ? 'noopener noreferrer' : undefined
+}
 </script>
 
 <template>
-  <div :class="['flex flex-col gap-4', align === 'center' && 'text-center', 'pointer-events-auto']">
+  <div :class="['article-copy-root flex flex-col gap-4', align === 'center' && 'text-center', 'pointer-events-auto']">
     <p
       v-if="pre"
       :class="[
-        'uppercase tracking-widest text-md font-semibold',
+        'ac-pre uppercase tracking-widest text-md font-semibold',
         preColor || 'text-[var(--story-narrative-text)]/65',
       ]"
     >
@@ -76,24 +97,24 @@ function handleScroll(target: string) {
     <h2
       v-if="title"
       :class="[
-        'text-xl lg:text-2xl font-semibold leading-tight [font-family:var(--story-font-heading)]',
+        'ac-title text-xl lg:text-2xl font-semibold leading-tight [font-family:var(--story-font-heading)]',
         titleColor || 'text-[var(--story-narrative-text)]',
       ]"
     >
       <span v-html="title" />
       <template v-if="highlight && highlightMode === 'line'">
         <br />
-        <span class="text-[var(--brand-primary)]" v-html="highlight" />
+        <span class="ac-highlight text-[var(--brand-primary)]" v-html="highlight" />
       </template>
       <template v-else-if="highlight && highlightMode === 'inline'">
-        <span class="text-[var(--brand-primary)]"> {{ highlight }}</span>
+        <span class="ac-highlight text-[var(--brand-primary)]"> {{ highlight }}</span>
       </template>
     </h2>
 
     <div
       v-for="(p, i) in paragraphs"
       :key="i"
-      class="storytime-copy-block text-lg text-[var(--story-narrative-text)]/85"
+      class="ac-body storytime-copy-block text-lg text-[var(--story-narrative-text)]/85"
       v-html="p"
     />
 
@@ -102,7 +123,7 @@ function handleScroll(target: string) {
       :href="refLink.url"
       target="_blank"
       rel="noopener noreferrer"
-      class="self-start inline-block text-xs text-[var(--story-narrative-text)]/75 rounded-full px-2 py-0.5 transition-colors duration-200"
+      class="ac-ref-link self-start inline-block text-xs text-[var(--story-narrative-text)]/75 rounded-full px-2 py-0.5 transition-colors duration-200"
       :style="{
         backgroundColor: 'color-mix(in srgb, var(--story-narrative-text) 8%, transparent)',
         border: '1px solid color-mix(in srgb, var(--story-narrative-text) 20%, transparent)',
@@ -115,7 +136,13 @@ function handleScroll(target: string) {
       <a
         v-if="cta.action === 'url'"
         :href="cta.target"
+        :target="targetAttr(cta)"
+        :rel="relAttr(cta)"
         :class="ctaClasses"
+        :style="ctaStyle"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
       >
         {{ cta.label }}
       </a>
@@ -124,6 +151,10 @@ function handleScroll(target: string) {
         v-else-if="cta.action === 'modal'"
         type="button"
         :class="ctaClasses"
+        :style="ctaStyle"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
         @click="open = true"
       >
         {{ cta.label }}
@@ -133,6 +164,10 @@ function handleScroll(target: string) {
         v-else
         type="button"
         :class="ctaClasses"
+        :style="ctaStyle"
+        data-au-track="cta"
+        :data-au-label="cta.label"
+        :data-au-modifier="cta.action"
         @click="handleScroll(cta.target)"
       >
         {{ cta.label }}

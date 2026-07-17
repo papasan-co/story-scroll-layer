@@ -5,6 +5,10 @@ type RootTarget = string | Ref<HTMLElement | null>
 export function useCssVarScroll(root: RootTarget = '#scrolly') {
   let raf = 0
   const setVar = (el: HTMLElement, name: string, val: string) => el.style.setProperty(name, val)
+  const isPinchZooming = () =>
+    typeof window !== 'undefined'
+    && window.visualViewport != null
+    && window.visualViewport.scale > 1.01
 
   const resolveRoot = (): HTMLElement | null => {
     if (typeof root === 'string') {
@@ -14,8 +18,10 @@ export function useCssVarScroll(root: RootTarget = '#scrolly') {
   }
 
   const onScroll = () => {
+    if (isPinchZooming()) return
     cancelAnimationFrame(raf)
     raf = requestAnimationFrame(() => {
+      if (isPinchZooming()) return
       const el = resolveRoot()
       if (!el) return
       const r = el.getBoundingClientRect()
@@ -45,4 +51,3 @@ export function useCssVarScroll(root: RootTarget = '#scrolly') {
     cancelAnimationFrame(raf)
   })
 }
-

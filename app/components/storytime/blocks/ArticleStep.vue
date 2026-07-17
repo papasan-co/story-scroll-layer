@@ -9,6 +9,7 @@ const props = defineProps<{
   componentProps?: Record<string, any>
   html?: string
   chrome?: StoryNarrativeChrome
+  empty?: boolean
 }>()
 
 const innerClass = computed(() => ({
@@ -40,27 +41,37 @@ const outerClass = computed(() => {
   return positions[position] || positions.right
 })
 
-const cardClass = computed(() => [
-  innerClass.value,
-  {
-    'storytime-article-card--overlay': presentation.value === 'overlay-card',
-    'storytime-article-card--transparent': presentation.value === 'transparent',
-    'storytime-article-card--shape-clipped': props.chrome?.shape === 'clipped-corner',
-    'storytime-article-card--shape-angled': props.chrome?.shape === 'angled-edge',
-    'storytime-article-card--width-sm': props.chrome?.width === 'sm',
-    'storytime-article-card--width-md': !props.chrome?.width || props.chrome?.width === 'md',
-    'storytime-article-card--width-lg': props.chrome?.width === 'lg',
-    'storytime-article-card--width-xl': props.chrome?.width === 'xl',
-  },
-])
+const cardClass = computed(() => {
+  if (props.empty) {
+    return [
+      innerClass.value,
+      'max-w-none p-0 bg-transparent rounded-none border-0 text-[var(--story-narrative-text)]',
+    ]
+  }
+
+  return [
+    innerClass.value,
+    'storytime-article-card max-w-2xl p-4 rounded-md border border-[var(--story-narrative-card-border,var(--story-divider))] bg-[var(--story-narrative-overlay-bg,var(--story-narrative-bg))] text-[var(--story-narrative-overlay-text,var(--story-narrative-text))] lg:bg-[transparent] lg:text-[var(--story-narrative-text)] lg:border-0',
+    {
+      'storytime-article-card--overlay': presentation.value === 'overlay-card',
+      'storytime-article-card--transparent': presentation.value === 'transparent',
+      'storytime-article-card--shape-clipped': props.chrome?.shape === 'clipped-corner',
+      'storytime-article-card--shape-angled': props.chrome?.shape === 'angled-edge',
+      'storytime-article-card--width-sm': props.chrome?.width === 'sm',
+      'storytime-article-card--width-md': !props.chrome?.width || props.chrome?.width === 'md',
+      'storytime-article-card--width-lg': props.chrome?.width === 'lg',
+      'storytime-article-card--width-xl': props.chrome?.width === 'xl',
+    },
+  ]
+})
 </script>
 
 <template>
   <div :class="outerClass">
     <div
       :class="cardClass"
-      class="storytime-article-card max-w-2xl p-4 bg-[var(--story-narrative-bg)] lg:bg-[transparent] rounded-md border border-[var(--story-narrative-card-border,var(--story-divider))] lg:border-0 text-[var(--story-narrative-text)]"
       data-article-card
+      :data-article-empty="props.empty ? 'true' : undefined"
     >
       <!-- Priority: component > html > slot -->
       <component v-if="component" :is="component" v-bind="componentProps" />
@@ -127,5 +138,17 @@ const cardClass = computed(() => [
 
 .storytime-article-card--width-xl {
   max-width: 52rem;
+}
+
+/* Below lg the card floats over the visual using the overlay pair, but copy
+   blocks hardcode text-[var(--story-narrative-text)] — dark text inside the
+   dark overlay card (invisible on phones). Shadow the variable inside the
+   card so those classes resolve to the overlay text color; at lg+ the card
+   sits in the rail and the narrative color applies untouched. CTA buttons
+   use the --story-cta-* pair and are unaffected. */
+@media (max-width: 1023.98px) {
+  [data-article-card]:not([data-article-empty='true']) {
+    --story-narrative-text: var(--story-narrative-overlay-text, #f2f2f2);
+  }
 }
 </style>
