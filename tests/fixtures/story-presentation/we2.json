@@ -1,0 +1,90 @@
+{
+  "presentation": {
+    "navMode": "chapter-nav",
+    "controls": {
+      "variant": "we2",
+      "keyboard": true,
+      "showShare": false,
+      "showProgress": false,
+      "showVideoControls": false,
+      "hideOnMobileBelow": 640,
+      "bottomOffsetPx": 24,
+      "responsiveBottomOffsetPx": [
+        { "maxWidth": 1023, "value": 20 }
+      ],
+      "jumpAlign": "center",
+      "jumpTarget": "card"
+    },
+    "chapterNav": {
+      "variant": "we2",
+      "showToggle": true,
+      "jumpAlign": "center",
+      "jumpTarget": "card",
+      "brand": {
+        "variant": "we2-mark",
+        "label": "GCERF — back to cover",
+        "sceneKeys": ["we2-cover"]
+      },
+      "cta": {
+        "url": "https://www.gcerf.org/report.pdf",
+        "label": "Download the report",
+        "ariaLabel": "Download the report",
+        "target": "_self",
+        "trackLabel": "download-report",
+        "trackModifier": "download"
+      },
+      "darkSceneKeys": ["we2-cover", "we2-glance", "we2-global-portfolio"]
+    },
+    "scrollHint": {
+      "enabled": true,
+      "variant": "we2",
+      "label": "Scroll to Explore",
+      "sceneKeys": ["we2-cover"],
+      "fontFamily": "DM Sans, sans-serif",
+      "bottomOffsetPx": 160,
+      "responsiveBottomOffsetPx": [
+        { "maxWidth": 767, "value": 110 }
+      ]
+    },
+    "scroll": {
+      "jumpTarget": "card",
+      "activationMode": "card-center",
+      "activationAnchor": 0.7,
+      "activationHysteresisPx": 24,
+      "stepMinHeight": "90svh",
+      "viewportStackStepMinHeight": "90svh"
+    },
+    "visualTransitionMode": "cross-reveal",
+    "chapters": [
+      {
+        "id": "foreword",
+        "label": "Foreword",
+        "shortLabel": "Foreword",
+        "sceneKeys": ["we2-foreword-koser", "we2-foreword-manservisi"]
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "layout": "full",
+      "cardMode": "hidden",
+      "flow": "standalone",
+      "mobileLeadOutDvh": 0,
+      "articleSteps": [
+        { "align": "left", "blockIndex": 0 }
+      ]
+    },
+    {
+      "layout": "full",
+      "cardMode": "viewport-stack",
+      "responsiveCardMode": "viewport-stack",
+      "responsiveBreakpoint": 768,
+      "mobileLeadInDvh": 24,
+      "mobileCardGapDvh": 12,
+      "mobileMinHeightDvh": 100,
+      "articleSteps": [
+        { "align": "right", "triggerCenterFraction": 0.35, "blockIndex": 0 }
+      ]
+    }
+  ]
+}

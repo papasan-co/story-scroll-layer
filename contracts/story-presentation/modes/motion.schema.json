@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.1.0/modes/motion.schema.json",
+  "title": "StoryMotionPresentationMode",
+  "description": "Bounded declarative motion bindings for an Autumn story scene.",
+  "$defs": {
+    "targetKey": {
+      "title": "StoryMotionTargetKey",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "easing": {
+      "title": "StoryMotionEasing",
+      "enum": ["linear", "ease", "ease-in", "ease-out", "ease-in-out"]
+    },
+    "revealParameters": {
+      "title": "StoryRevealOnEnterParameters",
+      "type": "object",
+      "properties": {
+        "axis": { "enum": ["x", "y", "none"] },
+        "distancePx": { "type": "number", "minimum": 0, "maximum": 40 },
+        "durationMs": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "delayMs": { "type": "integer", "minimum": 0, "maximum": 3000 },
+        "staggerMs": { "type": "integer", "minimum": 0, "maximum": 500 },
+        "easing": { "$ref": "#/$defs/easing" }
+      },
+      "additionalProperties": false
+    },
+    "scrollTransformParameters": {
+      "title": "StoryScrollProgressTransformParameters",
+      "type": "object",
+      "properties": {
+        "axis": { "enum": ["x", "y"] },
+        "from": { "type": "number", "minimum": -100, "maximum": 100 },
+        "to": { "type": "number", "minimum": -100, "maximum": 100 },
+        "unit": { "enum": ["px", "percent"] },
+        "opacityFrom": { "type": "number", "minimum": 0, "maximum": 1 },
+        "opacityTo": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "required": ["axis", "from", "to", "unit"],
+      "additionalProperties": false
+    },
+    "countUpParameters": {
+      "title": "StoryCountUpOnEnterParameters",
+      "type": "object",
+      "properties": {
+        "from": { "type": "number", "minimum": -1000000, "maximum": 1000000 },
+        "to": { "type": "number", "minimum": -1000000, "maximum": 1000000 },
+        "durationMs": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "delayMs": { "type": "integer", "minimum": 0, "maximum": 3000 },
+        "decimals": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "prefix": { "type": "string", "maxLength": 16 },
+        "suffix": { "type": "string", "maxLength": 16 }
+      },
+      "required": ["from", "to"],
+      "additionalProperties": false
+    },
+    "progressRevealParameters": {
+      "title": "StoryProgressRevealParameters",
+      "type": "object",
+      "properties": {
+        "fromPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "toPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "durationMs": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "delayMs": { "type": "integer", "minimum": 0, "maximum": 3000 },
+        "easing": { "$ref": "#/$defs/easing" }
+      },
+      "required": ["fromPercent", "toPercent"],
+      "additionalProperties": false
+    },
+    "revealBinding": {
+      "title": "StoryRevealOnEnterBinding",
+      "type": "object",
+      "properties": {
+        "targetKey": { "$ref": "#/$defs/targetKey" },
+        "capabilityId": { "const": "story-reveal-on-enter.v1" },
+        "trigger": { "const": "scene-enter" },
+        "parameters": { "$ref": "#/$defs/revealParameters" }
+      },
+      "required": ["targetKey", "capabilityId", "trigger", "parameters"],
+      "additionalProperties": false
+    },
+    "scrollTransformBinding": {
+      "title": "StoryScrollProgressTransformBinding",
+      "type": "object",
+      "properties": {
+        "targetKey": { "$ref": "#/$defs/targetKey" },
+        "capabilityId": { "const": "story-scroll-progress-transform.v1" },
+        "trigger": { "const": "scroll-progress" },
+        "parameters": { "$ref": "#/$defs/scrollTransformParameters" }
+      },
+      "required": ["targetKey", "capabilityId", "trigger", "parameters"],
+      "additionalProperties": false
+    },
+    "countUpBinding": {
+      "title": "StoryCountUpOnEnterBinding",
+      "type": "object",
+      "properties": {
+        "targetKey": { "$ref": "#/$defs/targetKey" },
+        "capabilityId": { "const": "story-count-up-on-enter.v1" },
+        "trigger": { "const": "scene-enter" },
+        "parameters": { "$ref": "#/$defs/countUpParameters" }
+      },
+      "required": ["targetKey", "capabilityId", "trigger", "parameters"],
+      "additionalProperties": false
+    },
+    "progressRevealBinding": {
+      "title": "StoryProgressRevealBinding",
+      "type": "object",
+      "properties": {
+        "targetKey": { "$ref": "#/$defs/targetKey" },
+        "capabilityId": { "const": "story-progress-reveal.v1" },
+        "trigger": { "enum": ["scene-enter", "scroll-progress"] },
+        "parameters": { "$ref": "#/$defs/progressRevealParameters" }
+      },
+      "required": ["targetKey", "capabilityId", "trigger", "parameters"],
+      "additionalProperties": false
+    },
+    "binding": {
+      "title": "StoryMotionBinding",
+      "oneOf": [
+        { "$ref": "#/$defs/revealBinding" },
+        { "$ref": "#/$defs/scrollTransformBinding" },
+        { "$ref": "#/$defs/countUpBinding" },
+        { "$ref": "#/$defs/progressRevealBinding" }
+      ]
+    },
+    "motion": {
+      "title": "StorySceneMotionPresentation",
+      "type": "object",
+      "properties": {
+        "version": { "const": "1.0.0" },
+        "registryVersion": { "const": "1.0.0" },
+        "registryHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bindings": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/binding" }
+        }
+      },
+      "required": ["version", "registryVersion", "registryHash", "bindings"],
+      "additionalProperties": false
+    }
+  }
+}

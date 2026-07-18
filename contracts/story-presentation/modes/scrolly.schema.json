@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.1.0/modes/scrolly.schema.json",
+  "title": "ScrollyPresentationMode",
+  "description": "Reusable definitions for Autumn's scrolly story presentation mode.",
+  "$defs": {
+    "scrollTarget": {
+      "title": "StoryScrollTarget",
+      "enum": ["step", "card"]
+    },
+    "activationMode": {
+      "title": "StoryActivationMode",
+      "enum": ["step-exit", "card-center", "card-exit-next"]
+    },
+    "introExitTarget": {
+      "title": "StoryIntroExitTarget",
+      "enum": ["default", "step-target", "scrolly-start"]
+    },
+    "controlsMode": {
+      "title": "StoryControlsMode",
+      "enum": ["default", "minimal", "pill", "arrows"]
+    },
+    "chapterNavChromeMode": {
+      "title": "StoryChapterNavChromeMode",
+      "enum": ["default", "floating-rail"]
+    },
+    "chapterNavBrandMode": {
+      "title": "StoryChapterNavBrandMode",
+      "enum": ["text", "image", "mark", "none"]
+    },
+    "scrollHintMode": {
+      "title": "StoryScrollHintMode",
+      "enum": ["default", "corner"]
+    },
+    "responsiveNumberRule": {
+      "title": "StoryResponsiveNumberRule",
+      "type": "object",
+      "properties": {
+        "minWidth": { "type": "number" },
+        "maxWidth": { "type": "number" },
+        "value": { "type": "number" }
+      },
+      "required": ["value"],
+      "additionalProperties": true
+    },
+    "jumpAlign": {
+      "title": "StoryJumpAlign",
+      "enum": ["center", "start", "end"]
+    },
+    "responsiveJumpAlignRule": {
+      "title": "StoryResponsiveJumpAlignRule",
+      "type": "object",
+      "properties": {
+        "minWidth": { "type": "number" },
+        "maxWidth": { "type": "number" },
+        "value": { "$ref": "#/$defs/jumpAlign" }
+      },
+      "required": ["value"],
+      "additionalProperties": true
+    },
+    "chapter": {
+      "title": "GeneratedStoryChapter",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "shortLabel": { "type": "string" },
+        "sceneKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/chapter" }
+        }
+      },
+      "required": ["id", "label", "sceneKeys"],
+      "additionalProperties": true
+    },
+    "chapterNavCta": {
+      "title": "StoryChapterNavCtaPresentation",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "label": { "type": "string" },
+        "suffix": { "type": "string" },
+        "ariaLabel": { "type": "string" },
+        "target": { "enum": ["_blank", "_self"] },
+        "rel": { "type": "string" },
+        "downloadFilename": { "type": "string" },
+        "trackLabel": { "type": "string" },
+        "trackModifier": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "controlsReaction": {
+      "title": "StoryControlsReactionPresentation",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "label": { "type": "string" },
+        "count": { "type": "number" },
+        "modifier": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "controls": {
+      "title": "StoryControlsPresentation",
+      "type": "object",
+      "properties": {
+        "variant": { "enum": ["default", "minimal", "we2"] },
+        "controlMode": { "$ref": "#/$defs/controlsMode" },
+        "keyboard": { "type": "boolean" },
+        "showShare": { "type": "boolean" },
+        "showProgress": { "type": "boolean" },
+        "showVideoControls": { "type": "boolean" },
+        "hideOnMobileBelow": { "type": "number" },
+        "autoHideOnMobile": { "type": "boolean" },
+        "bottomOffsetPx": { "type": "number" },
+        "responsiveBottomOffsetPx": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/responsiveNumberRule" }
+        },
+        "jumpAlign": { "$ref": "#/$defs/jumpAlign" },
+        "responsiveJumpAlign": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/responsiveJumpAlignRule" }
+        },
+        "jumpEndOffsetPx": { "type": "number" },
+        "responsiveJumpEndOffsetPx": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/responsiveNumberRule" }
+        },
+        "jumpTarget": { "$ref": "#/$defs/scrollTarget" },
+        "mobileCta": {
+          "oneOf": [
+            { "$ref": "#/$defs/chapterNavCta" },
+            { "type": "null" }
+          ]
+        },
+        "reaction": {
+          "oneOf": [
+            { "$ref": "#/$defs/controlsReaction" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "chapterNavBrand": {
+      "title": "StoryChapterNavBrandPresentation",
+      "type": "object",
+      "properties": {
+        "variant": { "enum": ["text", "image", "mark", "we2-mark"] },
+        "mode": { "$ref": "#/$defs/chapterNavBrandMode" },
+        "label": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "mobileLogoUrl": { "type": "string" },
+        "sceneKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "chapterNav": {
+      "title": "StoryChapterNavPresentation",
+      "type": "object",
+      "properties": {
+        "variant": { "enum": ["default", "we2"] },
+        "chromeMode": { "$ref": "#/$defs/chapterNavChromeMode" },
+        "brandMode": { "$ref": "#/$defs/chapterNavBrandMode" },
+        "showToggle": { "type": "boolean" },
+        "inactiveLabel": { "type": "string" },
+        "inactiveBehavior": { "enum": ["none", "first-chapter"] },
+        "brand": { "$ref": "#/$defs/chapterNavBrand" },
+        "cta": {
+          "oneOf": [
+            { "$ref": "#/$defs/chapterNavCta" },
+            { "type": "null" }
+          ]
+        },
+        "darkSceneKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "jumpAlign": { "$ref": "#/$defs/jumpAlign" },
+        "responsiveJumpAlign": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/responsiveJumpAlignRule" }
+        },
+        "jumpEndOffsetPx": { "type": "number" },
+        "responsiveJumpEndOffsetPx": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/responsiveNumberRule" }
+        },
+        "jumpTarget": { "$ref": "#/$defs/scrollTarget" }
+      },
+      "additionalProperties": true
+    },
+    "scrollHint": {
+      "title": "StoryScrollHintPresentation",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "variant": { "enum": ["default", "we2"] },
+        "mode": { "$ref": "#/$defs/scrollHintMode" },
+        "label": { "type": "string" },
+        "sceneKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "fontFamily": { "type": "string" },
+        "bottomOffsetPx": { "type": "number" },
+        "responsiveBottomOffsetPx": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/responsiveNumberRule" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "scroll": {
+      "title": "StoryScrollPresentation",
+      "type": "object",
+      "properties": {
+        "jumpTarget": { "$ref": "#/$defs/scrollTarget" },
+        "activationMode": { "$ref": "#/$defs/activationMode" },
+        "activationAnchor": { "type": "number" },
+        "activationHysteresisPx": { "type": "number" },
+        "introExitTarget": { "$ref": "#/$defs/introExitTarget" },
+        "introExitDurationMs": { "type": "number" },
+        "introReturnDurationMs": { "type": "number" },
+        "disableSnap": { "type": "boolean" },
+        "stepMinHeight": { "type": "string" },
+        "viewportStackStepMinHeight": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

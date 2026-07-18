@@ -1,29 +1,58 @@
+import type {
+  GeneratedStoryPresentation,
+  StorySceneMotionPresentation,
+} from './presentation.generated'
+
+type RemoveIndexSignature<T> = {
+  [K in keyof T as string extends K
+    ? never
+    : number extends K
+      ? never
+      : symbol extends K
+        ? never
+        : K]: T[K]
+}
+
+export {
+  STORY_PRESENTATION_CONTRACT_VERSION,
+} from './presentation.generated'
+export {
+  MOTION_CAPABILITIES,
+  MOTION_CAPABILITY_REGISTRY_HASH,
+  MOTION_CAPABILITY_REGISTRY_VERSION,
+} from './motionCapabilities.generated'
+export type {
+  GeneratedStoryPresentation,
+  StoryActivationMode,
+  StoryChapterNavBrandMode,
+  StoryChapterNavBrandPresentation,
+  StoryChapterNavChromeMode,
+  StoryChapterNavCtaPresentation,
+  StoryChapterNavPresentation,
+  StoryControlsMode,
+  StoryControlsPresentation,
+  StoryControlsReactionPresentation,
+  StoryFlowMode,
+  StoryIntroExitTarget,
+  StoryJumpAlign,
+  StoryResponsiveJumpAlignRule,
+  StoryResponsiveNumberRule,
+  StoryMotionBinding,
+  StoryMotionEasing,
+  StoryMotionTargetKey,
+  StorySceneMotionPresentation,
+  StoryScenePresentation,
+  StoryScrollHintMode,
+  StoryScrollHintPresentation,
+  StoryScrollPresentation,
+  StoryScrollTarget,
+  StoryVisualTransitionMode,
+} from './presentation.generated'
+
 export type StoryLayout = 'split' | 'full'
 export type StoryCardMode = 'side-by-side' | 'overlay' | 'viewport-stack' | 'hidden'
 export type StoryCardAlign = 'left' | 'center' | 'right'
 export type StorySceneFlow = 'scrolly' | 'standalone'
-export type StoryFlowMode = 'scrolly' | 'timed-path'
-export type StoryScrollTarget = 'step' | 'card'
-export type StoryJumpAlign = 'center' | 'start' | 'end'
-export type StoryActivationMode = 'step-exit' | 'card-center' | 'card-exit-next'
-export type StoryIntroExitTarget = 'default' | 'step-target' | 'scrolly-start'
-export type StoryVisualTransitionMode = 'fade' | 'cross-reveal'
-export type StoryChapterNavChromeMode = 'default' | 'floating-rail'
-export type StoryChapterNavBrandMode = 'text' | 'image' | 'mark' | 'none'
-export type StoryControlsMode = 'default' | 'minimal' | 'pill' | 'arrows'
-export type StoryScrollHintMode = 'default' | 'corner'
-
-export type StoryResponsiveNumberRule = {
-  minWidth?: number
-  maxWidth?: number
-  value: number
-}
-
-export type StoryResponsiveJumpAlignRule = {
-  minWidth?: number
-  maxWidth?: number
-  value: StoryJumpAlign
-}
 
 export type StoryArticleBlock =
   | { type: 'copy'; props: Record<string, any> }
@@ -63,6 +92,7 @@ export type StoryScene = {
   responsiveCardMode?: StoryCardMode
   responsiveBreakpoint?: number
   cardAlign?: StoryCardAlign
+  motion?: StorySceneMotionPresentation
   visual: StoryVisual
   /**
    * Scene defaults for mobile layout if per-step values are not provided.
@@ -83,6 +113,10 @@ export type StoryChapter = {
   children?: StoryChapter[]
 }
 
+/**
+ * Pre-contract timed-path types. Keep these hand-maintained until the MNE
+ * presentation mode stabilizes and receives its own schema fragment.
+ */
 export type StoryTimedPathMediaKind = 'color' | 'gradient' | 'image' | 'video'
 export type StoryTimedPathLayout = 'full' | 'split'
 export type StoryTimedPathDirection = 'forward' | 'back'
@@ -181,116 +215,8 @@ export type StoryTimedPathPresentation = {
   splitBreakpoint?: number
 }
 
-export type StoryControlsPresentation = {
-  /**
-   * @deprecated Use controlMode. Existing WE-2 payloads may still send variant=we2.
-   */
-  variant?: 'default' | 'minimal' | 'we2'
-  controlMode?: StoryControlsMode
-  keyboard?: boolean
-  showShare?: boolean
-  showProgress?: boolean
-  showVideoControls?: boolean
-  hideOnMobileBelow?: number
-  autoHideOnMobile?: boolean
-  bottomOffsetPx?: number
-  responsiveBottomOffsetPx?: StoryResponsiveNumberRule[]
-  jumpAlign?: StoryJumpAlign
-  responsiveJumpAlign?: StoryResponsiveJumpAlignRule[]
-  jumpEndOffsetPx?: number
-  responsiveJumpEndOffsetPx?: StoryResponsiveNumberRule[]
-  jumpTarget?: StoryScrollTarget
-  mobileCta?: StoryChapterNavCtaPresentation | null
-  reaction?: StoryControlsReactionPresentation | null
-}
-
-export type StoryControlsReactionPresentation = {
-  enabled?: boolean
-  label?: string
-  count?: number
-  modifier?: string
-}
-
-export type StoryChapterNavBrandPresentation = {
-  /**
-   * @deprecated Use mode. Existing WE-2 payloads may still send variant=we2-mark.
-   */
-  variant?: 'text' | 'image' | 'mark' | 'we2-mark'
-  mode?: StoryChapterNavBrandMode
-  label?: string
-  logoUrl?: string
-  mobileLogoUrl?: string
-  sceneKeys?: string[]
-}
-
-export type StoryChapterNavCtaPresentation = {
-  url?: string
-  label?: string
-  suffix?: string
-  ariaLabel?: string
-  target?: '_blank' | '_self'
-  rel?: string
-  downloadFilename?: string
-  trackLabel?: string
-  trackModifier?: string
-}
-
-export type StoryChapterNavPresentation = {
-  /**
-   * @deprecated Use chromeMode. Existing WE-2 payloads may still send variant=we2.
-   */
-  variant?: 'default' | 'we2'
-  chromeMode?: StoryChapterNavChromeMode
-  brandMode?: StoryChapterNavBrandMode
-  showToggle?: boolean
-  inactiveLabel?: string
-  inactiveBehavior?: 'none' | 'first-chapter'
-  brand?: StoryChapterNavBrandPresentation
-  cta?: StoryChapterNavCtaPresentation | null
-  darkSceneKeys?: string[]
-  jumpAlign?: StoryJumpAlign
-  responsiveJumpAlign?: StoryResponsiveJumpAlignRule[]
-  jumpEndOffsetPx?: number
-  responsiveJumpEndOffsetPx?: StoryResponsiveNumberRule[]
-  jumpTarget?: StoryScrollTarget
-}
-
-export type StoryScrollHintPresentation = {
-  enabled?: boolean
-  /**
-   * @deprecated Use mode. Existing WE-2 payloads may still send variant=we2.
-   */
-  variant?: 'default' | 'we2'
-  mode?: StoryScrollHintMode
-  label?: string
-  sceneKeys?: string[]
-  fontFamily?: string
-  bottomOffsetPx?: number
-  responsiveBottomOffsetPx?: StoryResponsiveNumberRule[]
-}
-
-export type StoryScrollPresentation = {
-  jumpTarget?: StoryScrollTarget
-  activationMode?: StoryActivationMode
-  activationAnchor?: number
-  activationHysteresisPx?: number
-  introExitTarget?: StoryIntroExitTarget
-  introExitDurationMs?: number
-  introReturnDurationMs?: number
-  disableSnap?: boolean
-  stepMinHeight?: string
-  viewportStackStepMinHeight?: string
-}
-
-export type StoryPresentation = {
-  flowMode?: StoryFlowMode
-  navMode?: string
+export type StoryPresentation = Omit<RemoveIndexSignature<GeneratedStoryPresentation>, 'chapters'> & {
   chapters?: StoryChapter[]
-  controls?: StoryControlsPresentation
-  chapterNav?: StoryChapterNavPresentation
-  scrollHint?: StoryScrollHintPresentation
-  scroll?: StoryScrollPresentation
   timedPath?: StoryTimedPathPresentation
-  visualTransitionMode?: StoryVisualTransitionMode
-  [key: string]: any
+  [key: string]: unknown
 }
