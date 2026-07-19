@@ -1,11 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.onautumn.com/story-presentation/1.1.0/scene-presentation.schema.json",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.2.0/scene-presentation.schema.json",
   "title": "StoryScenePresentation",
   "description": "Presentation metadata stored on an Autumn story scene.",
   "type": "object",
   "x-runtime-keys": [
     "flow",
+    "narrativeTreatment",
     "mobileLeadInDvh",
     "mobileLeadOutDvh",
     "mobileCardGapDvh",
@@ -16,6 +17,7 @@
   ],
   "properties": {
     "flow": { "enum": ["scrolly", "standalone"] },
+    "narrativeTreatment": { "enum": ["none", "single", "synchronized"] },
     "layout": { "enum": ["split", "full"] },
     "cardMode": { "enum": ["side-by-side", "overlay", "viewport-stack", "hidden"] },
     "responsiveCardMode": { "enum": ["side-by-side", "overlay", "viewport-stack", "hidden"] },
@@ -42,10 +44,6 @@
           "blockIndexes": {
             "type": "array",
             "items": { "type": "integer", "minimum": 0 }
-          },
-          "blockIds": {
-            "type": "array",
-            "items": { "type": "string" }
           }
         },
         "additionalProperties": true
