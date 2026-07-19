@@ -154,6 +154,7 @@ export type StoryMotionEasing = 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ea
  */
 export interface StoryScenePresentation {
   flow?: 'scrolly' | 'standalone'
+  narrativeTreatment?: 'none' | 'single' | 'synchronized'
   layout?: 'split' | 'full'
   cardMode?: 'side-by-side' | 'overlay' | 'viewport-stack' | 'hidden'
   responsiveCardMode?: 'side-by-side' | 'overlay' | 'viewport-stack' | 'hidden'
@@ -174,7 +175,6 @@ export interface StoryScenePresentation {
     triggerCenterFraction?: number
     blockIndex?: number
     blockIndexes?: number[]
-    blockIds?: string[]
     [k: string]: unknown
   }[]
   [k: string]: unknown
@@ -245,4 +245,4 @@ export interface StoryProgressRevealParameters {
   easing?: StoryMotionEasing
 }
 
-export const STORY_PRESENTATION_CONTRACT_VERSION = '1.1.0' as const
+export const STORY_PRESENTATION_CONTRACT_VERSION = '1.2.0' as const

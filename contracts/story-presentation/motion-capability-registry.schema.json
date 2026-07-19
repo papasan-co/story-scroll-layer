@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.onautumn.com/story-presentation/1.1.0/motion-capability-registry.schema.json",
+  "$id": "https://schemas.onautumn.com/story-presentation/1.2.0/motion-capability-registry.schema.json",
   "title": "MotionCapabilityRegistryV1",
   "type": "object",
   "properties": {

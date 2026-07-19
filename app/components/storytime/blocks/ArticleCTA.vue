@@ -18,6 +18,7 @@ type CtaAction = {
 }
 
 const props = withDefaults(defineProps<{
+  eyebrow?: string
   pre?: string
   preColor?: string
   headline?: string
@@ -33,6 +34,13 @@ const props = withDefaults(defineProps<{
 })
 
 const openTarget = ref('')
+
+const eyebrow = computed(() => {
+  const canonical = typeof props.eyebrow === 'string' ? props.eyebrow.trim() : ''
+  const legacy = typeof props.pre === 'string' ? props.pre.trim() : ''
+
+  return canonical || legacy
+})
 
 const actions = computed(() =>
   (Array.isArray(props.actions) ? props.actions : [])
@@ -106,7 +114,7 @@ function handleScroll(target: string) {
     class="article-cta-root max-w-[720px] mx-auto text-left pointer-events-auto [font-family:var(--story-font-body)]"
     :class="{ 'article-cta-root--card-grid': variant === 'card-grid' }"
   >
-    <p v-if="props.pre" :class="['uppercase tracking-widest font-bold text-sm mb-1', props.preColor]">{{ props.pre }}</p>
+    <p v-if="eyebrow" :class="['article-cta-eyebrow uppercase tracking-widest font-bold text-sm mb-1', props.preColor]">{{ eyebrow }}</p>
     <h3
       v-if="props.headline"
       class="article-cta-headline font-extrabold text-xl text-[var(--story-narrative-text)] mb-1 [font-family:var(--story-font-heading)]"

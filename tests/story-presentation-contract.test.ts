@@ -135,6 +135,21 @@ describe('story presentation contract', () => {
     expect(STORY_PRESENTATION_CONTRACT_VERSION).toBe(version.version)
   })
 
+  it('advertises narrative treatment and canonical block index grouping', () => {
+    const properties = sceneSchema.properties as Record<string, unknown>
+    const articleStep = ((properties.articleSteps as Record<string, unknown>).items as Record<string, unknown>)
+    const articleProperties = articleStep.properties as Record<string, unknown>
+
+    expect(validateScene({
+      narrativeTreatment: 'synchronized',
+      articleSteps: [{ blockIndexes: [0, 1] }, { blockIndex: 2 }],
+    })).toBe(true)
+    expect(validateScene({ narrativeTreatment: 'sometimes' })).toBe(false)
+    expect(articleProperties).toHaveProperty('blockIndexes')
+    expect(articleProperties).toHaveProperty('blockIndex')
+    expect(articleProperties).not.toHaveProperty('blockIds')
+  })
+
   it('accepts bounded motion and rejects selector or parameter escape hatches', () => {
     const validMotion = {
       version: '1.0.0',

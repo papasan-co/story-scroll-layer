@@ -1,8 +1,10 @@
 # Story presentation contract
 
 This directory is the source of truth for story and scene presentation metadata.
-The contract uses JSON Schema draft 2020-12. Version `1.1.0` adds bounded
-scene-motion bindings and the independently hashed `MotionCapabilityRegistry.v1`.
+The contract uses JSON Schema draft 2020-12. Version `1.2.0` adds explicit
+scene narrative treatments and canonical plural `blockIndexes` grouping.
+Version `1.1.0` added bounded scene-motion bindings and the independently
+hashed `MotionCapabilityRegistry.v1`.
 
 ## Change rules
 

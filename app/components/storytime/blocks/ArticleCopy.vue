@@ -16,6 +16,7 @@ type CopyCta = {
 }
 
 const props = withDefaults(defineProps<{
+  eyebrow?: string
   pre?: string
   preColor?: string
   title?: string
@@ -31,6 +32,13 @@ const props = withDefaults(defineProps<{
 })
 
 const open = ref(false)
+
+const eyebrow = computed(() => {
+  const canonical = typeof props.eyebrow === 'string' ? props.eyebrow.trim() : ''
+  const legacy = typeof props.pre === 'string' ? props.pre.trim() : ''
+
+  return canonical || legacy
+})
 
 const cta = computed(() => {
   if (!props.cta || typeof props.cta !== 'object') return null
@@ -85,13 +93,13 @@ function relAttr(action: { action: CtaActionType; target: string }) {
 <template>
   <div :class="['article-copy-root flex flex-col gap-4', align === 'center' && 'text-center', 'pointer-events-auto']">
     <p
-      v-if="pre"
+      v-if="eyebrow"
       :class="[
         'ac-pre uppercase tracking-widest text-md font-semibold',
         preColor || 'text-[var(--story-narrative-text)]/65',
       ]"
     >
-      {{ pre }}
+      {{ eyebrow }}
     </p>
 
     <h2

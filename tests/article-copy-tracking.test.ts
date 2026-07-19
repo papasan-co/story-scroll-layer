@@ -8,6 +8,32 @@ const globalStubs = {
 }
 
 describe('ArticleCopy CTA tracking attributes', () => {
+  it('renders canonical eyebrow once and falls back to legacy pre', () => {
+    const canonical = mount(ArticleCopy, {
+      props: { eyebrow: 'The approach', pre: 'Legacy label', title: 'A practical rebuild' },
+      global: { stubs: globalStubs },
+    })
+    const legacy = mount(ArticleCopy, {
+      props: { eyebrow: '  ', pre: 'Legacy label' },
+      global: { stubs: globalStubs },
+    })
+
+    expect(canonical.findAll('.ac-pre')).toHaveLength(1)
+    expect(canonical.find('.ac-pre').text()).toBe('The approach')
+    expect(canonical.text()).not.toContain('Legacy label')
+    expect(legacy.find('.ac-pre').text()).toBe('Legacy label')
+  })
+
+  it('renders the supported highlight hierarchy', () => {
+    const wrapper = mount(ArticleCopy, {
+      props: { title: 'One clear idea', highlight: 'made visible', highlightMode: 'line' },
+      global: { stubs: globalStubs },
+    })
+
+    expect(wrapper.find('.ac-title').text()).toContain('One clear idea')
+    expect(wrapper.find('.ac-highlight').text()).toBe('made visible')
+  })
+
   it('marks URL CTAs with delegated tracker attributes', () => {
     const wrapper = mount(ArticleCopy, {
       props: {

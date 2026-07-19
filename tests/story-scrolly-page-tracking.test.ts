@@ -184,6 +184,41 @@ describe('StoryScrollyPage tracking attributes', () => {
     expect(steps[0].attributes('data-au-source-key')).toBe('narrative')
   })
 
+  it('renders a visual-only standalone opener without synthesizing narrative steps', () => {
+    const wrapper = mount(StoryScrollyPage, {
+      props: {
+        scenes: [
+          {
+            id: 'eeeeeeee-5555-5555-5555-555555555555',
+            key: 'visual-only-cover',
+            sourceKey: 'visual-only-cover',
+            flow: 'standalone',
+            layout: 'full',
+            cardMode: 'hidden',
+            visual: { podSlug: 'hero', props: {} },
+            articles: [],
+          },
+        ],
+        controls: false,
+      },
+      slots: {
+        visual: '<div data-testid="visual-only-cover" />',
+      },
+      global: {
+        stubs: {
+          ScrollVisual: { template: '<div data-testid="scroll-visual"><slot /></div>' },
+          BottomActionBar: { template: '<div />' },
+          ClientOnly: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-au-scene-flow="standalone"]')).toBeTruthy()
+    expect(wrapper.get('[data-testid="visual-only-cover"]')).toBeTruthy()
+    expect(wrapper.findAll('.step')).toHaveLength(0)
+    expect(wrapper.find('[data-testid="scroll-visual"]').exists()).toBe(false)
+  })
+
   it('defers the scrolly visual when standalone scenes arrive after initial render', async () => {
     const wrapper = mount(StoryScrollyPage, {
       props: { scenes: [], controls: false },

@@ -10,6 +10,24 @@ import { mount } from '@vue/test-utils'
 import ArticleCTA from '../app/components/storytime/blocks/ArticleCTA.vue'
 
 describe('ArticleCTA tracking attributes', () => {
+  it('renders canonical eyebrow before headline and falls back to legacy pre', () => {
+    const canonical = mount(ArticleCTA, {
+      props: { eyebrow: 'Take action', pre: 'Legacy label', headline: 'Start today', caption: 'Choose a path.' },
+      global: { stubs: { ClientOnly: true, Teleport: true } },
+    })
+    const legacy = mount(ArticleCTA, {
+      props: { eyebrow: '', pre: 'Legacy label' },
+      global: { stubs: { ClientOnly: true, Teleport: true } },
+    })
+
+    expect(canonical.findAll('.article-cta-eyebrow')).toHaveLength(1)
+    expect(canonical.find('.article-cta-eyebrow').text()).toBe('Take action')
+    expect(canonical.text()).not.toContain('Legacy label')
+    expect(canonical.find('.article-cta-headline').text()).toBe('Start today')
+    expect(canonical.find('.article-cta-caption').text()).toBe('Choose a path.')
+    expect(legacy.find('.article-cta-eyebrow').text()).toBe('Legacy label')
+  })
+
   it('marks the URL anchor with data-au-track="cta", label, and modifier="url"', () => {
     const wrapper = mount(ArticleCTA, {
       props: {
