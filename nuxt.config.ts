@@ -10,6 +10,15 @@ export default defineNuxtConfig({
   $meta: {
     name: 'storytime-layer',
   },
+
+  alias: {
+    // Iframe consumers cannot rely on Nuxt's host-document CSS bundle. Expose
+    // the structural storytime stylesheet as a named layer contract so they
+    // can install it explicitly in the isolated preview document.
+    '#storytime-iframe-shell': fileURLToPath(
+      new URL('./app/utils/storytime/iframeShellStyles.ts', import.meta.url),
+    ),
+  },
   
   css: [fileURLToPath(new URL('./app/assets/css/storytime.css', import.meta.url))],
   
@@ -22,4 +31,3 @@ export default defineNuxtConfig({
     ],
   },
 })
-
