@@ -20,18 +20,23 @@ describe('ArticleCopy CTA tracking attributes', () => {
 
     expect(canonical.findAll('.ac-pre')).toHaveLength(1)
     expect(canonical.find('.ac-pre').text()).toBe('The approach')
+    expect(canonical.find('.ac-pre').classes()).toContain(
+      'text-[var(--story-narrative-eyebrow,var(--story-narrative-text))]',
+    )
     expect(canonical.text()).not.toContain('Legacy label')
     expect(legacy.find('.ac-pre').text()).toBe('Legacy label')
   })
 
-  it('renders the supported highlight hierarchy', () => {
+  it('ignores removed highlight props instead of adding a second title line', () => {
     const wrapper = mount(ArticleCopy, {
-      props: { title: 'One clear idea', highlight: 'made visible', highlightMode: 'line' },
+      props: { title: 'One clear idea' },
+      attrs: { highlight: 'made visible', 'highlight-mode': 'line' },
       global: { stubs: globalStubs },
     })
 
     expect(wrapper.find('.ac-title').text()).toContain('One clear idea')
-    expect(wrapper.find('.ac-highlight').text()).toBe('made visible')
+    expect(wrapper.text()).not.toContain('made visible')
+    expect(wrapper.find('.ac-highlight').exists()).toBe(false)
   })
 
   it('marks URL CTAs with delegated tracker attributes', () => {
