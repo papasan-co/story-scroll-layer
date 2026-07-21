@@ -249,6 +249,24 @@ function findSlotByHints(slots: BrandSlot[], hints: string[]): BrandSlot | null 
   return null
 }
 
+/** Prefer an accessible supporting brand color, then soften narrative text. */
+function resolveNarrativeEyebrowColor(
+  slots: BrandSlot[],
+  backgroundHex: string,
+  textHex: string,
+): string {
+  const supportingHints = ['secondary', 'support', 'highlight', 'accent']
+  for (const hint of supportingHints) {
+    const candidate = findSlotByHints(slots, [hint])?.hex
+    if (candidate && candidate !== backgroundHex && contrastRatio(backgroundHex, candidate) >= 4.5) {
+      return candidate
+    }
+  }
+
+  const softened = adjustHex(textHex, luminance(backgroundHex) > 0.55 ? 1.24 : 0.82)
+  return contrastRatio(backgroundHex, softened) >= 4.5 ? softened : textHex
+}
+
 function tokenPrimary(brand: BrandLike | null | undefined): string | null {
   const color = brand?.tokens && typeof brand.tokens === 'object' && !Array.isArray(brand.tokens)
     ? (brand.tokens as { color?: Record<string, string> }).color
@@ -504,6 +522,11 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     background: narrativeBg,
     text: ensureAaTextOnBackground(narrativeBg, narrativeTextRaw),
   }
+  const narrativeEyebrow = resolveNarrativeEyebrowColor(
+    slots,
+    narrativePair.background,
+    narrativePair.text,
+  )
 
   const ctaBg = resolveColorValue(
     resolveThemeColor(sceneTheme?.colors, storyTheme?.colors, 'cta_background'),
@@ -581,6 +604,7 @@ export function resolveStoryTheme(input: ResolveStoryThemeInput): ResolveStoryTh
     '--story-accent': brandPrimary,
     '--story-narrative-bg': narrativePair.background,
     '--story-narrative-text': narrativePair.text,
+    '--story-narrative-eyebrow': narrativeEyebrow,
     '--story-narrative-card-border': narrativeCardBorder,
     // Overlay pair for narrative floating over the visual (tablet/mobile):
     // the visual pair inverted. Contrast is symmetric, so the inverted pair

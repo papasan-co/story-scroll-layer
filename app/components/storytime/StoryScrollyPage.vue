@@ -409,6 +409,7 @@ const rootStyle = computed<Record<string, string>>(() => {
     '--story-accent': props.brandColor,
     '--story-narrative-bg': '#ffffff',
     '--story-narrative-text': '#111111',
+    '--story-narrative-eyebrow': '#555555',
     '--story-narrative-card-border': 'rgba(17, 17, 17, 0.14)',
     '--story-divider': 'rgba(17, 17, 17, 0.14)',
     '--story-cta-bg': props.brandColor,

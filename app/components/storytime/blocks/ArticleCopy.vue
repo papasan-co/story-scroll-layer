@@ -15,21 +15,17 @@ type CopyCta = {
   textColor?: string
 }
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   eyebrow?: string
   pre?: string
   preColor?: string
   title?: string
   titleColor?: string
-  highlight?: string
-  highlightMode?: 'inline' | 'line'
   paragraphs?: string[]
   refLink?: { label: string; url: string }
   align?: 'left' | 'center' | 'right'
   cta?: CopyCta
-}>(), {
-  highlightMode: 'line',
-})
+}>()
 
 const open = ref(false)
 
@@ -96,7 +92,7 @@ function relAttr(action: { action: CtaActionType; target: string }) {
       v-if="eyebrow"
       :class="[
         'ac-pre uppercase tracking-widest text-md font-semibold',
-        preColor || 'text-[var(--story-narrative-text)]/65',
+        preColor || 'text-[var(--story-narrative-eyebrow,var(--story-narrative-text))]',
       ]"
     >
       {{ eyebrow }}
@@ -110,13 +106,6 @@ function relAttr(action: { action: CtaActionType; target: string }) {
       ]"
     >
       <span v-html="title" />
-      <template v-if="highlight && highlightMode === 'line'">
-        <br />
-        <span class="ac-highlight text-[var(--brand-primary)]" v-html="highlight" />
-      </template>
-      <template v-else-if="highlight && highlightMode === 'inline'">
-        <span class="ac-highlight text-[var(--brand-primary)]"> {{ highlight }}</span>
-      </template>
     </h2>
 
     <div
