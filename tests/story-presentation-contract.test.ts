@@ -8,6 +8,7 @@ import {
   MOTION_CAPABILITIES,
   MOTION_CAPABILITY_REGISTRY_HASH,
   MOTION_CAPABILITY_REGISTRY_VERSION,
+  MOTION_ROLE_PROFILE_DECLARATIONS,
 } from '../app/types/storytime/motionCapabilities.generated'
 
 type Fixture = {
@@ -45,7 +46,14 @@ const motionRegistryPath = resolve(contractRoot, 'motion-capabilities.json')
 const motionRegistrySource = readFileSync(motionRegistryPath)
 const motionRegistry = JSON.parse(motionRegistrySource.toString('utf8')) as {
   version: string
-  capabilities: { id: string; executor: string }[]
+  profileDeclarations: Record<'story' | 'website' | 'social', 'populated' | 'declared_empty'>
+  capabilities: {
+    id: string
+    executor: string
+    reducedMotion: string
+    focusPolicy: string
+    roleClassifications: { target_profile: string; role: string }[]
+  }[]
 }
 const version = readJson<{ version: string }>(resolve(contractRoot, 'version.json'))
 
@@ -186,6 +194,7 @@ describe('story presentation contract', () => {
     expect(new Set(motionRegistry.capabilities.map(capability => capability.id)).size)
       .toBe(motionRegistry.capabilities.length)
     expect(MOTION_CAPABILITY_REGISTRY_VERSION).toBe(motionRegistry.version)
+    expect(MOTION_ROLE_PROFILE_DECLARATIONS).toEqual(motionRegistry.profileDeclarations)
     expect(MOTION_CAPABILITY_REGISTRY_HASH).toBe(
       createHash('sha256').update(motionRegistrySource).digest('hex'),
     )
@@ -195,5 +204,46 @@ describe('story presentation contract', () => {
     for (const capability of motionRegistry.capabilities) {
       expect(serializedMotionSchema.includes(capability.id)).toBe(capability.executor === 'storytime')
     }
+  })
+
+  it('freezes the ratified profile-scoped role mappings without changing accessibility policy', () => {
+    expect(motionRegistry.profileDeclarations).toEqual({
+      story: 'populated',
+      website: 'declared_empty',
+      social: 'declared_empty',
+    })
+    expect(
+      Object.fromEntries(
+        motionRegistry.capabilities.map(capability => [
+          capability.id,
+          capability.roleClassifications.map(classification => classification.role),
+        ]),
+      ),
+    ).toEqual({
+      'pod-css-keyframes.v1': ['enter', 'ambient'],
+      'pod-css-transition.v1': ['interaction'],
+      'story-reveal-on-enter.v1': ['enter'],
+      'story-scroll-progress-transform.v1': ['progress'],
+      'story-count-up-on-enter.v1': ['enter'],
+      'story-progress-reveal.v1': ['enter', 'progress'],
+    })
+    expect(
+      Object.fromEntries(
+        motionRegistry.capabilities.map(capability => [
+          capability.id,
+          [capability.reducedMotion, capability.focusPolicy],
+        ]),
+      ),
+    ).toEqual({
+      'pod-css-keyframes.v1': ['disable', 'not-interactive'],
+      'pod-css-transition.v1': ['disable', 'preserve'],
+      'story-reveal-on-enter.v1': ['final-state', 'preserve'],
+      'story-scroll-progress-transform.v1': ['final-state', 'not-interactive'],
+      'story-count-up-on-enter.v1': ['final-state', 'not-interactive'],
+      'story-progress-reveal.v1': ['final-state', 'not-interactive'],
+    })
+    expect(motionRegistry.capabilities.flatMap(capability => capability.roleClassifications)).toSatisfy(
+      classifications => classifications.every(classification => classification.target_profile === 'story'),
+    )
   })
 })

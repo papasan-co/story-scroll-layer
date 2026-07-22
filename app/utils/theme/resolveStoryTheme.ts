@@ -67,6 +67,20 @@ export type ResolveStoryThemeResult = {
   stylesheets: string[]
 }
 
+export const STORY_TYPOGRAPHY_ROLE_RECEPTORS = {
+  heading: {
+    cssVariable: '--story-font-heading',
+    selector:
+      '.autumn-story-root h1, .autumn-story-root h2, .autumn-story-root h3, .autumn-story-root h4, .autumn-story-root h5, .autumn-story-root h6',
+    computedProperty: 'font-family',
+  },
+  body: {
+    cssVariable: '--story-font-body',
+    selector: '#scrolly',
+    computedProperty: 'font-family',
+  },
+} as const
+
 const FALLBACK_INK = '#111111'
 const FALLBACK_PRIMARY = '#007C7E'
 const FALLBACK_WHITE = '#FFFFFF'

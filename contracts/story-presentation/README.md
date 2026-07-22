@@ -6,6 +6,11 @@ scene narrative treatments and canonical plural `blockIndexes` grouping.
 Version `1.1.0` added bounded scene-motion bindings and the independently
 hashed `MotionCapabilityRegistry.v1`.
 
+`MotionCapabilityRegistry.v1` registry version `1.1.0` adds the ratified P2b
+profile declarations and semantic role classifications. Story is populated;
+website and social are declared empty. The classifications do not replace the
+registry's executor, reduced-motion, focus, parameter, or evidence policy.
+
 ## Change rules
 
 - Edit a schema first, bump `version.json`, then run `pnpm contracts:generate`.

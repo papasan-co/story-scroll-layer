@@ -1,6 +1,11 @@
 {
   "contract": "MotionCapabilityRegistry.v1",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "profileDeclarations": {
+    "story": "populated",
+    "website": "declared_empty",
+    "social": "declared_empty"
+  },
   "capabilities": [
     {
       "id": "pod-css-keyframes.v1",
@@ -10,6 +15,10 @@
       "sourceFragmentPolicy": "side-effect-free-css-only",
       "reducedMotion": "disable",
       "focusPolicy": "not-interactive",
+      "roleClassifications": [
+        { "target_profile": "story", "role": "enter" },
+        { "target_profile": "story", "role": "ambient" }
+      ],
       "evidenceRequirements": ["animation-metadata", "computed-style", "reduced-motion"]
     },
     {
@@ -20,6 +29,9 @@
       "sourceFragmentPolicy": "side-effect-free-css-only",
       "reducedMotion": "disable",
       "focusPolicy": "preserve",
+      "roleClassifications": [
+        { "target_profile": "story", "role": "interaction" }
+      ],
       "evidenceRequirements": ["computed-style", "target-geometry", "reduced-motion", "focus-state"]
     },
     {
@@ -30,6 +42,9 @@
       "sourceFragmentPolicy": "none",
       "reducedMotion": "final-state",
       "focusPolicy": "preserve",
+      "roleClassifications": [
+        { "target_profile": "story", "role": "enter" }
+      ],
       "evidenceRequirements": ["animation-metadata", "computed-style", "target-geometry", "reduced-motion", "focus-state"]
     },
     {
@@ -40,6 +55,9 @@
       "sourceFragmentPolicy": "none",
       "reducedMotion": "final-state",
       "focusPolicy": "not-interactive",
+      "roleClassifications": [
+        { "target_profile": "story", "role": "progress" }
+      ],
       "evidenceRequirements": ["computed-style", "normalized-progress", "target-geometry", "reduced-motion"]
     },
     {
@@ -50,6 +68,9 @@
       "sourceFragmentPolicy": "none",
       "reducedMotion": "final-state",
       "focusPolicy": "not-interactive",
+      "roleClassifications": [
+        { "target_profile": "story", "role": "enter" }
+      ],
       "evidenceRequirements": ["computed-style", "animation-metadata", "reduced-motion"]
     },
     {
@@ -60,6 +81,10 @@
       "sourceFragmentPolicy": "none",
       "reducedMotion": "final-state",
       "focusPolicy": "not-interactive",
+      "roleClassifications": [
+        { "target_profile": "story", "role": "enter" },
+        { "target_profile": "story", "role": "progress" }
+      ],
       "evidenceRequirements": ["computed-style", "normalized-progress", "target-geometry", "reduced-motion"]
     }
   ]

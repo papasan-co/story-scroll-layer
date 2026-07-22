@@ -5,7 +5,17 @@
   "type": "object",
   "properties": {
     "contract": { "const": "MotionCapabilityRegistry.v1" },
-    "version": { "const": "1.0.0" },
+    "version": { "const": "1.1.0" },
+    "profileDeclarations": {
+      "type": "object",
+      "properties": {
+        "story": { "const": "populated" },
+        "website": { "const": "declared_empty" },
+        "social": { "const": "declared_empty" }
+      },
+      "required": ["story", "website", "social"],
+      "additionalProperties": false
+    },
     "capabilities": {
       "type": "array",
       "minItems": 1,
@@ -24,6 +34,20 @@
           "sourceFragmentPolicy": { "enum": ["none", "side-effect-free-css-only"] },
           "reducedMotion": { "enum": ["disable", "final-state"] },
           "focusPolicy": { "enum": ["preserve", "not-interactive"] },
+          "roleClassifications": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "target_profile": { "enum": ["story", "website", "social"] },
+                "role": { "enum": ["enter", "interaction", "progress", "ambient"] }
+              },
+              "required": ["target_profile", "role"],
+              "additionalProperties": false
+            }
+          },
           "evidenceRequirements": {
             "type": "array",
             "minItems": 1,
@@ -33,11 +57,11 @@
             }
           }
         },
-        "required": ["id", "executor", "triggers", "parameterSchemaRef", "sourceFragmentPolicy", "reducedMotion", "focusPolicy", "evidenceRequirements"],
+        "required": ["id", "executor", "triggers", "parameterSchemaRef", "sourceFragmentPolicy", "reducedMotion", "focusPolicy", "roleClassifications", "evidenceRequirements"],
         "additionalProperties": false
       }
     }
   },
-  "required": ["contract", "version", "capabilities"],
+  "required": ["contract", "version", "profileDeclarations", "capabilities"],
   "additionalProperties": false
 }

@@ -70,7 +70,13 @@ async function generate() {
     '',
     `export const MOTION_CAPABILITY_REGISTRY_VERSION = '${registry.value.version}' as const`,
     `export const MOTION_CAPABILITY_REGISTRY_HASH = '${registry.hash}' as const`,
+    `export const MOTION_ROLE_PROFILE_DECLARATIONS = ${JSON.stringify(registry.value.profileDeclarations, null, 2)} as const`,
     `export const MOTION_CAPABILITIES = ${JSON.stringify(registry.value.capabilities, null, 2)} as const`,
+    '',
+    'export type MotionCapability = (typeof MOTION_CAPABILITIES)[number]',
+    "export type MotionRoleClassification = MotionCapability['roleClassifications'][number]",
+    "export type MotionSemanticRole = MotionRoleClassification['role']",
+    'export type MotionRoleTargetProfile = keyof typeof MOTION_ROLE_PROFILE_DECLARATIONS',
     '',
   ].join('\n')
   await writeFile(generatedMotionCapabilitiesPath, registryOutput)
