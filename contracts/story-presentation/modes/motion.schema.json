@@ -132,7 +132,7 @@
       "type": "object",
       "properties": {
         "version": { "const": "1.0.0" },
-        "registryVersion": { "const": "1.0.0" },
+        "registryVersion": { "enum": ["1.0.0", "1.1.0"] },
         "registryHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "bindings": {
           "type": "array",

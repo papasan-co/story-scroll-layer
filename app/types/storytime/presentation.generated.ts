@@ -181,7 +181,7 @@ export interface StoryScenePresentation {
 }
 export interface StorySceneMotionPresentation {
   version: '1.0.0'
-  registryVersion: '1.0.0'
+  registryVersion: '1.0.0' | '1.1.0'
   registryHash: string
   /**
    * @maxItems 64
