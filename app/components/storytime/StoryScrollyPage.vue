@@ -849,6 +849,61 @@ const supportsLvh = typeof CSS !== 'undefined' && !!CSS.supports?.('height', '10
 let layoutHeightKey = ''
 let layoutHeightMax = 0
 
+/*
+ * ── Browser-chrome compensation for the narrative ───────────────────────────
+ *
+ * Even with all layout in stable units, TOP-bar browsers (Chrome on Android
+ * and iOS, Samsung, Edge) move the layout viewport's top edge down when the
+ * URL bar expands while leaving scrollY untouched — so EVERYTHING shifts down
+ * in screen space by the bar delta. A full-bleed pinned visual hides that
+ * shift (it still fills the screen); a discrete narrative card mid-screen
+ * shows it. NYT interactives exhibit the identical micro-jump.
+ *
+ * The narrative column gets a counter-translate of exactly the bar's current
+ * occupancy, making the bar OVERLAY the narrative the way it visually
+ * overlays the pinned scene. Transform-only — compositor work, no layout, so
+ * this does not reintroduce the reflow bug fixed above.
+ *
+ * Gated to Chromium mobile UAs: Safari iOS keeps its bar at the BOTTOM
+ * (the viewport shrinks from the bottom edge and in-flow content never
+ * shifts), so compensating there would CREATE the artifact it removes here.
+ */
+const supportsBarCompensation = (() => {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false
+  const ua = navigator.userAgent
+  if (!/Android|iPhone|iPad|Mobi/i.test(ua)) return false
+  return /Chrome|CriOS|Chromium|EdgA|SamsungBrowser/i.test(ua)
+})()
+const BAR_INSET_MAX_PX = 200
+let barBaselineKey = ''
+let barBaselineHeight = 0
+
+function isTypingIntoField() {
+  const el = document.activeElement as HTMLElement | null
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+}
+
+function updateBarShiftVar(root: HTMLElement, visualViewportHeight: number) {
+  if (!supportsBarCompensation) return
+  // Pinch zoom shrinks the visual viewport for reasons that are not the
+  // URL bar; freeze the current shift rather than mistracking.
+  if (window.visualViewport && window.visualViewport.scale > 1.01) return
+  if (isTypingIntoField()) {
+    root.style.setProperty('--story-bar-shift', '0px')
+    return
+  }
+  const key = String(window.innerWidth)
+  if (key !== barBaselineKey) {
+    barBaselineKey = key
+    barBaselineHeight = 0
+  }
+  // The tallest viewport seen at this width is the bar-hidden height; the
+  // current shortfall from it is exactly the chrome's on-screen occupancy.
+  if (visualViewportHeight > barBaselineHeight) barBaselineHeight = visualViewportHeight
+  const inset = Math.min(BAR_INSET_MAX_PX, Math.max(0, barBaselineHeight - visualViewportHeight))
+  root.style.setProperty('--story-bar-shift', `${inset.toFixed(2)}px`)
+}
+
 function updateViewportVars() {
   const root = document.documentElement
   const visualViewport = window.visualViewport
@@ -861,6 +916,8 @@ function updateViewportVars() {
   )
   const bodyZoomRaw = parseFloat(getComputedStyle(document.body).zoom || '1')
   const bodyZoom = Number.isFinite(bodyZoomRaw) && bodyZoomRaw > 0 ? bodyZoomRaw : 1
+
+  updateBarShiftVar(root, visualViewportHeight)
 
   // Live overlay vars — intentionally track the visible viewport.
   root.style.setProperty('--story-vv-height', `${Math.round(visualViewportHeight / bodyZoom)}px`)
@@ -1142,6 +1199,19 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
 
 .storytime-article-column {
   background-color: transparent;
+}
+
+/*
+ * The bar overlays the narrative instead of pushing it (see
+ * updateBarShiftVar). Mobile only; transform-only so the sticky visual and
+ * document layout are untouched. Activation geometry reads rects WITH the
+ * transform, shifting triggers by at most the bar height — the same
+ * tolerance the trigger fractions already absorb.
+ */
+@media (max-width: 1023.98px) {
+  .storytime-article-column {
+    transform: translate3d(0, calc(var(--story-bar-shift, 0px) * -1), 0);
+  }
 }
 
 .story-scrolly-visual-placeholder {
