@@ -1202,14 +1202,24 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
 }
 
 /*
- * The bar overlays the narrative instead of pushing it (see
- * updateBarShiftVar). Mobile only; transform-only so the sticky visual and
- * document layout are untouched. Activation geometry reads rects WITH the
- * transform, shifting triggers by at most the bar height — the same
- * tolerance the trigger fractions already absorb.
+ * The bar overlays the STORY instead of pushing it (see updateBarShiftVar).
+ * Narrative column, sticky visual (in ScrollVisual.vue), placeholder and
+ * standalone scenes all ride the same var, so the whole piece stays glued
+ * to the screen while the browser chrome animates. On-device testing
+ * showed the sticky visual displaces with the bar too — compositor
+ * pinning of stuck elements did not hold on the tested browsers — which
+ * is why this is not narrative-only. Mobile only; transform-only, no
+ * layout writes. Activation geometry reads rects WITH the transform,
+ * shifting triggers by at most the bar height — tolerance the trigger
+ * fractions already absorb. Near a scene boundary the lifted visual can
+ * reveal a Δ-tall strip of the next section while the bar is shown;
+ * boundaries are transitions anyway, and the trade beats the whole scene
+ * hopping.
  */
 @media (max-width: 1023.98px) {
-  .storytime-article-column {
+  .storytime-article-column,
+  .story-scrolly-visual-placeholder,
+  .story-standalone-scene {
     transform: translate3d(0, calc(var(--story-bar-shift, 0px) * -1), 0);
   }
 }
