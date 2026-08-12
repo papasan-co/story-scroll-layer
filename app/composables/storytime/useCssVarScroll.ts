@@ -4,6 +4,17 @@ type RootTarget = string | Ref<HTMLElement | null>
 
 export function useCssVarScroll(root: RootTarget = '#scrolly') {
   let raf = 0
+  // Viewport height is CACHED, not read per frame. window.innerHeight
+  // tracks the dynamic viewport, so reading it live made these CSS vars
+  // (and anything derived from them) snap ~10% every time the mobile
+  // URL bar toggled mid-scroll. Refreshed only on width-changing
+  // resizes — rotation or a real window resize — never the URL bar.
+  let cachedVh = 1
+  let cachedW = 0
+  const measureViewport = () => {
+    cachedVh = Math.max(1, window.innerHeight)
+    cachedW = window.innerWidth
+  }
   const setVar = (el: HTMLElement, name: string, val: string) => el.style.setProperty(name, val)
   const isPinchZooming = () =>
     typeof window !== 'undefined'
@@ -25,7 +36,7 @@ export function useCssVarScroll(root: RootTarget = '#scrolly') {
       const el = resolveRoot()
       if (!el) return
       const r = el.getBoundingClientRect()
-      const vh = Math.max(1, window.innerHeight)
+      const vh = cachedVh
       const topFrac = Math.max(0, Math.min(1, 1 - r.top / vh))
       const botFrac = Math.max(0, Math.min(1, (vh - r.bottom) / vh))
       setVar(el, '--g-top-offset-fraction', String(topFrac))
@@ -42,12 +53,21 @@ export function useCssVarScroll(root: RootTarget = '#scrolly') {
     })
   }
 
+  const onResize = () => {
+    if (window.innerWidth === cachedW) return
+    measureViewport()
+    onScroll()
+  }
+
   onMounted(() => {
+    measureViewport()
     addEventListener('scroll', onScroll, { passive: true })
+    addEventListener('resize', onResize)
     onScroll()
   })
   onBeforeUnmount(() => {
     removeEventListener('scroll', onScroll)
+    removeEventListener('resize', onResize)
     cancelAnimationFrame(raf)
   })
 }
