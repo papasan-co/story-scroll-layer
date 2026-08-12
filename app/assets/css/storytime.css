@@ -5,12 +5,20 @@
  * Prefer `svh` for stability; fall back for older browsers.
  */
 html:root { --mobile-step-height: 150svh; }
-@supports (-webkit-touch-callout: none) {
-  html:root { --mobile-step-height: -webkit-fill-available; }
-}
 @supports not (height: 100svh) {
   html:root { --mobile-step-height: 150vh; }
 }
+/* Do NOT override this with -webkit-fill-available (or dvh) on iOS.
+ * Those units track the DYNAMIC viewport, so every URL-bar show/hide
+ * resized every step and threw the narrative card under the reader's
+ * eye by half a screen (measured: a 76px bar toggle displaced the
+ * active card by ~426px, both directions, and inflated the document
+ * by ~1140px). WebKit has no scroll anchoring to compensate. svh (and
+ * plain vh, which NYT interactives use for the same 150-per-step
+ * runway) are pinned viewports and do not move during the toggle.
+ * An earlier iOS-only -webkit-fill-available override here was the
+ * root cause of the mobile scroll jump; it also silently gave iOS 1x
+ * viewport of runway instead of the intended 1.5x. */
 
 /* On mobile we want visuals clickable outside cards while cards remain interactive */
 @media (max-width: 1023.98px) {

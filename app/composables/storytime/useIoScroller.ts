@@ -754,8 +754,16 @@ export function useIoScroller(
       lastSeenInnerWidth = window.innerWidth
       lastSeenInnerHeight = window.innerHeight
       resizeHandler = () => {
+        // Read BEFORE maybeLockOnResize() updates lastSeenInnerWidth.
+        const widthChanged = window.innerWidth !== lastSeenInnerWidth
         maybeLockOnResize()
-        handleResize()
+        // A height-only resize is the mobile URL bar collapsing/expanding
+        // (the browser never changes width on its own). Re-deriving every
+        // card's spacing for those rewrote layout mid-scroll and made the
+        // narrative jump; the lock above only hid the activation churn.
+        // Only a width change — rotation, split-screen, a real window
+        // resize — invalidates the spacing.
+        if (widthChanged) handleResize()
       }
       window.addEventListener('resize', resizeHandler)
 

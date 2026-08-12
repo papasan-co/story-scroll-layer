@@ -823,6 +823,32 @@ function onVisualReady(key: string) {
   }
 }
 
+/*
+ * Two very different kinds of viewport var live here, and the mobile scroll
+ * jump came from conflating them.
+ *
+ * --story-vv-* feed FIXED overlays (scroll hint, bottom action bar). They are
+ * supposed to track the visible viewport live — that is their job.
+ *
+ * --story-layout-height sizes IN-FLOW layout: the scrolly visual placeholder,
+ * the visual frame, standalone scenes. Setting it from live
+ * visualViewport.height on every scroll/resize tick meant every frame of the
+ * mobile URL-bar animation resized the placeholder — an in-flow element — and
+ * shoved the entire document, page and narrative alike. Layout must NEVER
+ * track the live viewport (see storytime.css for the measured numbers).
+ *
+ * The CSS fallbacks (100dvh upgraded to 100lvh under @supports) already give
+ * every modern browser a stable large-viewport height. So on modern,
+ * unzoomed pages we now REMOVE the inline override and let 100lvh rule.
+ * The JS-set value survives only for the two cases it existed for — bodies
+ * with a CSS zoom (embeds), and browsers without lvh — and there it is
+ * keyed to width/zoom and monotonic (max seen), so the URL bar can never
+ * shrink it mid-scroll.
+ */
+const supportsLvh = typeof CSS !== 'undefined' && !!CSS.supports?.('height', '100lvh')
+let layoutHeightKey = ''
+let layoutHeightMax = 0
+
 function updateViewportVars() {
   const root = document.documentElement
   const visualViewport = window.visualViewport
@@ -836,10 +862,26 @@ function updateViewportVars() {
   const bodyZoomRaw = parseFloat(getComputedStyle(document.body).zoom || '1')
   const bodyZoom = Number.isFinite(bodyZoomRaw) && bodyZoomRaw > 0 ? bodyZoomRaw : 1
 
-  root.style.setProperty('--story-layout-height', `${Math.round(visualViewportHeight / bodyZoom)}px`)
+  // Live overlay vars — intentionally track the visible viewport.
   root.style.setProperty('--story-vv-height', `${Math.round(visualViewportHeight / bodyZoom)}px`)
   root.style.setProperty('--story-vv-top', `${Math.round(visualViewportTop / bodyZoom)}px`)
   root.style.setProperty('--story-vv-bottom', `${Math.round(visualViewportBottomInset / bodyZoom)}px`)
+
+  // Layout var — stable by construction.
+  if (supportsLvh && Math.abs(bodyZoom - 1) < 0.001) {
+    root.style.removeProperty('--story-layout-height')
+    return
+  }
+  const key = `${window.innerWidth}:${bodyZoom}`
+  if (key !== layoutHeightKey) {
+    layoutHeightKey = key
+    layoutHeightMax = 0
+  }
+  const candidate = Math.round(Math.max(layoutViewportHeight, visualViewportHeight) / bodyZoom)
+  if (candidate > layoutHeightMax) {
+    layoutHeightMax = candidate
+    root.style.setProperty('--story-layout-height', `${candidate}px`)
+  }
 }
 
 function installViewportVarListeners() {
