@@ -134,5 +134,27 @@ describe('StoryChapterNav presentation', () => {
     expect(nav.attributes('style')).toContain('--story-chapter-nav-active-bg: #714AF9')
     expect(nav.attributes('style')).toContain('--story-chapter-nav-cta-bg: #714AF9')
     expect(wrapper.get('[data-story-chapter-cta]').text()).toContain('Join the mailing list')
+    expect(wrapper.get('[data-story-chapter-cta] svg').attributes('viewBox')).toBe('0 0 16 16')
+  })
+
+  it('keeps the download glyph for CTAs that download a named file', () => {
+    const wrapper = mount(StoryChapterNav, {
+      props: {
+        chapters: [{ id: 'intro', label: 'Intro', sceneKeys: ['intro'] }],
+        activeSceneKey: 'intro',
+        cta: {
+          url: '/report.pdf',
+          label: 'Download report',
+          downloadFilename: 'report.pdf',
+        },
+      },
+      global: {
+        stubs: {
+          Teleport: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-story-chapter-cta] svg').attributes('viewBox')).toBe('0 0 18 18')
   })
 })
