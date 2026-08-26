@@ -54,7 +54,7 @@ const cta = computed(() => {
 
 const ctaClasses = computed(() => {
   if (!cta.value) return ''
-  const base = 'self-start inline-flex items-center gap-2 font-bold px-4 py-2 rounded-lg transition [font-family:var(--story-font-body)]'
+  const base = 'ac-cta self-start inline-flex items-center gap-2 font-bold px-4 py-2 rounded-lg transition [font-family:var(--story-font-body)]'
   const primary = 'bg-[var(--article-copy-cta-bg,var(--story-cta-bg))] text-[var(--article-copy-cta-text,var(--story-cta-text))] hover:brightness-105'
   const secondary = 'border border-[var(--article-copy-cta-bg,var(--story-cta-bg))] text-[var(--article-copy-cta-bg,var(--story-cta-bg))] hover:opacity-90'
   const tone = cta.value.tone === 'emphasis' ? 'shadow-lg' : ''

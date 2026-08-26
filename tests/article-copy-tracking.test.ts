@@ -60,6 +60,7 @@ describe('ArticleCopy CTA tracking attributes', () => {
     expect(anchor.attributes('href')).toBe('https://example.org/report')
     expect(anchor.attributes('target')).toBe('_blank')
     expect(anchor.attributes('rel')).toBe('noopener noreferrer')
+    expect(anchor.classes()).toContain('ac-cta')
     expect(anchor.classes()).toContain('self-start')
     expect(anchor.attributes('style')).toContain('--article-copy-cta-bg: #00274F')
     expect(anchor.attributes('style')).toContain('--article-copy-cta-text: #FFFFFF')
