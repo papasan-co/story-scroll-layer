@@ -32,4 +32,18 @@ describe('story presentation normalization', () => {
     expect(normalizeControlsPresentation({ controlMode: 'arrows' }).controlMode).toBe('arrows')
     expect(normalizeScrollHintPresentation({ mode: 'default' }).mode).toBe('default')
   })
+
+  it('normalizes chapter CTA scene visibility without changing omitted defaults', () => {
+    expect(normalizeChapterNavPresentation({
+      cta: {
+        label: 'Join the mailing list',
+        url: 'https://example.com/join',
+        sceneKeys: ['scene-two', '', 'scene-three'],
+      },
+    }).cta?.sceneKeys).toEqual(['scene-two', 'scene-three'])
+
+    expect(normalizeChapterNavPresentation({
+      cta: { label: 'Always visible', url: 'https://example.com' },
+    }).cta).not.toHaveProperty('sceneKeys')
+  })
 })

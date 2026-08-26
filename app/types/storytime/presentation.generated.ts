@@ -81,6 +81,7 @@ export interface StoryChapterNavCtaPresentation {
   downloadFilename?: string
   trackLabel?: string
   trackModifier?: string
+  sceneKeys?: string[]
   [k: string]: unknown
 }
 export interface StoryControlsReactionPresentation {
@@ -245,4 +246,4 @@ export interface StoryProgressRevealParameters {
   easing?: StoryMotionEasing
 }
 
-export const STORY_PRESENTATION_CONTRACT_VERSION = '1.2.0' as const
+export const STORY_PRESENTATION_CONTRACT_VERSION = '1.3.0' as const
