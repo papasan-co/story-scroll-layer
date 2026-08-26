@@ -478,28 +478,30 @@ onBeforeUnmount(() => {
         </a>
       </div>
 
-      <a
-        v-if="ctaUrl && props.ctaDetached"
-        :href="ctaUrl"
-        :target="ctaTarget"
-        :rel="ctaRel"
-        :download="ctaDownloadFilename"
-        class="story-chapter-nav__cta story-chapter-nav__cta--rail"
-        data-story-chapter-cta
-        data-au-track="chapter-nav"
-        :data-au-label="ctaTrackLabel"
-        :data-au-modifier="ctaTrackModifier"
-        :aria-label="ctaAriaLabel"
-      >
-        <svg v-if="ctaDownloadFilename" width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-          <path d="M9 2v9m0 0L5 7m4 4 4-4M3 14.5h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
-        <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </a>
     </nav>
+
+    <a
+      v-if="ctaUrl && props.ctaDetached"
+      :href="ctaUrl"
+      :target="ctaTarget"
+      :rel="ctaRel"
+      :download="ctaDownloadFilename"
+      :style="navStyle"
+      class="story-chapter-nav__cta story-chapter-nav__cta--rail story-chapter-nav__cta--detached"
+      data-story-chapter-cta
+      data-au-track="chapter-nav"
+      :data-au-label="ctaTrackLabel"
+      :data-au-modifier="ctaTrackModifier"
+      :aria-label="ctaAriaLabel"
+    >
+      <svg v-if="ctaDownloadFilename" width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M9 2v9m0 0L5 7m4 4 4-4M3 14.5h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+      <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </a>
   </Teleport>
 </template>
 
@@ -662,10 +664,11 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-.story-chapter-nav--cta-detached .story-chapter-nav__cta--rail {
-  position: absolute;
-  top: 0;
-  right: 0;
+.story-chapter-nav__cta--detached {
+  position: fixed;
+  z-index: 1101;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: 12px;
   min-height: 36px;
   border-radius: 999px;
 }
