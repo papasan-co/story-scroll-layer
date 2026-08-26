@@ -91,6 +91,12 @@ export function normalizeChapterNavPresentation(
     value.cta = cta
   }
 
+  if (Array.isArray(value.sceneKeys)) {
+    value.sceneKeys = value.sceneKeys.filter(
+      (sceneKey): sceneKey is string => typeof sceneKey === 'string' && sceneKey.length > 0,
+    )
+  }
+
   return value
 }
 

@@ -46,4 +46,20 @@ describe('story presentation normalization', () => {
       cta: { label: 'Always visible', url: 'https://example.com' },
     }).cta).not.toHaveProperty('sceneKeys')
   })
+
+  it('normalizes chapter navigation scene visibility and preserves explicit chrome colors', () => {
+    expect(normalizeChapterNavPresentation({
+      sceneKeys: ['scene-two', '', 'scene-three'],
+      backgroundColor: 'rgba(40, 25, 94, 0.7)',
+      activeBackgroundColor: '#714AF9',
+      activeTextColor: '#FFFFFF',
+      ctaDetached: true,
+    })).toMatchObject({
+      sceneKeys: ['scene-two', 'scene-three'],
+      backgroundColor: 'rgba(40, 25, 94, 0.7)',
+      activeBackgroundColor: '#714AF9',
+      activeTextColor: '#FFFFFF',
+      ctaDetached: true,
+    })
+  })
 })

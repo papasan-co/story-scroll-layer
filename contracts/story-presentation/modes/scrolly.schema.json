@@ -177,6 +177,18 @@
         "showToggle": { "type": "boolean" },
         "inactiveLabel": { "type": "string" },
         "inactiveBehavior": { "enum": ["none", "first-chapter"] },
+        "sceneKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "backgroundColor": { "type": "string" },
+        "textColor": { "type": "string" },
+        "activeBackgroundColor": { "type": "string" },
+        "activeTextColor": { "type": "string" },
+        "borderColor": { "type": "string" },
+        "ctaBackgroundColor": { "type": "string" },
+        "ctaTextColor": { "type": "string" },
+        "ctaDetached": { "type": "boolean" },
         "brand": { "$ref": "#/$defs/chapterNavBrand" },
         "cta": {
           "oneOf": [

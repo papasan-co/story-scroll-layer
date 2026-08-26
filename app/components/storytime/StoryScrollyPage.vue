@@ -185,6 +185,16 @@ const showChapterNav = computed(() => {
 })
 const activeNavSceneKey = computed(() => activeNavScene.value?.sourceKey || activeNavScene.value?.key || '')
 const chapterNavPresentation = computed(() => normalizedPresentation.value.chapterNav || {})
+const chapterNavSceneKeys = computed(() => {
+  const sceneKeys = chapterNavPresentation.value.sceneKeys
+  return Array.isArray(sceneKeys)
+    ? sceneKeys.filter((key): key is string => typeof key === 'string' && key.length > 0)
+    : []
+})
+const showChapterNavForScene = computed(() => {
+  return showChapterNav.value
+    && (!chapterNavSceneKeys.value.length || chapterNavSceneKeys.value.includes(activeNavSceneKey.value))
+})
 const chapterNavChromeMode = computed(() => chapterNavPresentation.value.chromeMode === 'floating-rail' ? 'floating-rail' : 'default')
 const chapterNavShowToggle = computed(() => chapterNavPresentation.value.showToggle !== false)
 const chapterNavInactiveLabel = computed(() => {
@@ -453,6 +463,11 @@ const rootStyle = computed<Record<string, string>>(() => {
 
   if (isCssLengthLike(scrollPresentation.value.viewportStackStepMinHeight)) {
     vars['--story-viewport-stack-step-height'] = scrollPresentation.value.viewportStackStepMinHeight.trim()
+  }
+
+  const ctaBorderRadius = normalizedPresentation.value.narrative?.ctaBorderRadius
+  if (isCssLengthLike(ctaBorderRadius)) {
+    vars['--story-narrative-cta-radius'] = ctaBorderRadius.trim()
   }
 
   return vars
@@ -973,7 +988,7 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
     class="autumn-story-root"
     :style="rootStyle"
   >
-    <ClientOnly v-if="showChapterNav">
+    <ClientOnly v-if="showChapterNavForScene">
       <StoryChapterNav
         :chapters="presentationChapters"
         :active-scene-key="activeNavSceneKey"
@@ -987,6 +1002,14 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
         :brand-mode="chapterNavBrandMode"
         :cta="chapterNavCta"
         :dark-scene-keys="chapterNavDarkSceneKeys"
+        :background-color="chapterNavPresentation.backgroundColor"
+        :text-color="chapterNavPresentation.textColor"
+        :active-background-color="chapterNavPresentation.activeBackgroundColor"
+        :active-text-color="chapterNavPresentation.activeTextColor"
+        :border-color="chapterNavPresentation.borderColor"
+        :cta-background-color="chapterNavPresentation.ctaBackgroundColor"
+        :cta-text-color="chapterNavPresentation.ctaTextColor"
+        :cta-detached="chapterNavPresentation.ctaDetached === true"
         :disable-teleport="disableChromeTeleport"
         @jump="onChapterJump"
       />
