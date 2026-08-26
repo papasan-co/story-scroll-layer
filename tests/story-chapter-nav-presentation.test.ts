@@ -133,8 +133,9 @@ describe('StoryChapterNav presentation', () => {
     expect(nav.attributes('style')).toContain('--story-chapter-nav-bg: rgba(40, 25, 94, 0.7)')
     expect(nav.attributes('style')).toContain('--story-chapter-nav-active-bg: #714AF9')
     expect(nav.attributes('style')).toContain('--story-chapter-nav-cta-bg: #714AF9')
-    expect(wrapper.get('[data-story-chapter-cta]').text()).toContain('Join the mailing list')
-    expect(wrapper.get('[data-story-chapter-cta] svg').attributes('viewBox')).toBe('0 0 16 16')
+    const detachedCta = wrapper.get('.story-chapter-nav > [data-story-chapter-cta]')
+    expect(detachedCta.text()).toContain('Join the mailing list')
+    expect(detachedCta.get('svg').attributes('viewBox')).toBe('0 0 16 16')
   })
 
   it('keeps the download glyph for CTAs that download a named file', () => {
