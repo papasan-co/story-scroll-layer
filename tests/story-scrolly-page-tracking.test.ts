@@ -42,6 +42,43 @@ afterEach(() => {
 })
 
 describe('StoryScrollyPage tracking attributes', () => {
+  it('shows a chapter CTA only on configured source scenes', () => {
+    const mountWithSceneKeys = (sceneKeys?: string[]) => mount(StoryScrollyPage, {
+      props: {
+        scenes,
+        controls: false,
+        presentation: {
+          chapters: [{ id: 'intro', label: 'Introduction', sceneKeys: ['source-scene-one'] }],
+          chapterNav: {
+            cta: {
+              label: 'Join the mailing list',
+              url: 'https://example.com/join',
+              ...(sceneKeys ? { sceneKeys } : {}),
+            },
+          },
+        },
+      },
+      global: {
+        stubs: {
+          ScrollVisual: { template: '<div><slot /></div>' },
+          BottomActionBar: { template: '<div />' },
+          ClientOnly: { template: '<div><slot /></div>' },
+          StoryChapterNav: {
+            props: ['cta'],
+            template: '<div data-testid="chapter-nav" :data-cta-label="cta && cta.label" />',
+          },
+        },
+      },
+    })
+
+    expect(mountWithSceneKeys(['source-scene-one']).get('[data-testid="chapter-nav"]').attributes('data-cta-label'))
+      .toBe('Join the mailing list')
+    expect(mountWithSceneKeys(['source-scene-two']).get('[data-testid="chapter-nav"]').attributes('data-cta-label'))
+      .toBeUndefined()
+    expect(mountWithSceneKeys().get('[data-testid="chapter-nav"]').attributes('data-cta-label'))
+      .toBe('Join the mailing list')
+  })
+
   it('passes responsive jump alignment to the controls chrome', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 834 })
 
