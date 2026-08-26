@@ -421,10 +421,13 @@ onBeforeUnmount(() => {
           :data-au-modifier="ctaTrackModifier"
           :aria-label="ctaAriaLabel"
         >
-          <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <svg v-if="ctaDownloadFilename" width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
             <path d="M9 2v9m0 0L5 7m4 4 4-4M3 14.5h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+          <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </a>
 
         <button
@@ -465,10 +468,13 @@ onBeforeUnmount(() => {
           :data-au-modifier="ctaTrackModifier"
           :aria-label="ctaAriaLabel"
         >
-          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <svg v-if="ctaDownloadFilename" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M6 1v6.5m0 0L3.3 4.8m2.7 2.7 2.7-2.7M1.5 10h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+          <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </a>
       </div>
     </nav>
@@ -635,9 +641,9 @@ onBeforeUnmount(() => {
 }
 
 .story-chapter-nav--cta-detached .story-chapter-nav__cta--rail {
-  position: fixed;
-  top: calc(16px + env(safe-area-inset-top, 0px));
-  right: 22px;
+  position: absolute;
+  top: 0;
+  right: 0;
   min-height: 36px;
   border-radius: 999px;
 }
