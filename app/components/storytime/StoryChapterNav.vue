@@ -31,6 +31,14 @@ const props = withDefaults(defineProps<{
   brand?: StoryChapterNavBrandPresentation | null
   cta?: StoryChapterNavCtaPresentation | null
   darkSceneKeys?: string[]
+  backgroundColor?: string
+  textColor?: string
+  activeBackgroundColor?: string
+  activeTextColor?: string
+  borderColor?: string
+  ctaBackgroundColor?: string
+  ctaTextColor?: string
+  ctaDetached?: boolean
   disableTeleport?: boolean
 }>(), {
   brandLabel: '',
@@ -44,6 +52,14 @@ const props = withDefaults(defineProps<{
   brand: null,
   cta: null,
   darkSceneKeys: () => [],
+  backgroundColor: '',
+  textColor: '',
+  activeBackgroundColor: '',
+  activeTextColor: '',
+  borderColor: '',
+  ctaBackgroundColor: '',
+  ctaTextColor: '',
+  ctaDetached: false,
   disableTeleport: false,
 })
 
@@ -111,6 +127,17 @@ const ctaTrackLabel = computed(() => {
 const ctaTrackModifier = computed(() => {
   const modifier = ctaPresentation.value.trackModifier
   return typeof modifier === 'string' && modifier.trim() ? modifier.trim() : 'cta'
+})
+const navStyle = computed<Record<string, string>>(() => {
+  const styles: Record<string, string> = {}
+  if (props.backgroundColor) styles['--story-chapter-nav-bg'] = props.backgroundColor
+  if (props.textColor) styles['--story-chapter-nav-text'] = props.textColor
+  if (props.activeBackgroundColor) styles['--story-chapter-nav-active-bg'] = props.activeBackgroundColor
+  if (props.activeTextColor) styles['--story-chapter-nav-active-text'] = props.activeTextColor
+  if (props.borderColor) styles['--story-chapter-nav-border'] = props.borderColor
+  if (props.ctaBackgroundColor) styles['--story-chapter-nav-cta-bg'] = props.ctaBackgroundColor
+  if (props.ctaTextColor) styles['--story-chapter-nav-cta-text'] = props.ctaTextColor
+  return styles
 })
 
 function chapterSceneKeys(chapter: ChapterLike): string[] {
@@ -251,8 +278,9 @@ onBeforeUnmount(() => {
       :class="[
         `story-chapter-nav--${navChromeMode}`,
         `story-chapter-nav--${sceneTheme}`,
-        { 'is-expanded': expanded },
+        { 'is-expanded': expanded, 'story-chapter-nav--cta-detached': props.ctaDetached },
       ]"
+      :style="navStyle"
       data-story-chapter-nav
       :data-story-chapter-chrome-mode="navChromeMode"
       :data-story-chapter-theme="sceneTheme"
@@ -579,6 +607,10 @@ onBeforeUnmount(() => {
   background: var(--story-chapter-nav-active-bg, color-mix(in srgb, currentColor 12%, transparent));
 }
 
+.story-chapter-nav__chip.is-active {
+  color: var(--story-chapter-nav-active-text, inherit);
+}
+
 .story-chapter-nav__chip.is-past {
   opacity: 0.72;
 }
@@ -590,6 +622,8 @@ onBeforeUnmount(() => {
 
 .story-chapter-nav__cta {
   padding: 0 12px;
+  color: var(--story-chapter-nav-cta-text, inherit);
+  background: var(--story-chapter-nav-cta-bg, transparent);
 }
 
 .story-chapter-nav__cta--rail {
@@ -598,6 +632,14 @@ onBeforeUnmount(() => {
 
 .story-chapter-nav__cta--icon {
   display: none;
+}
+
+.story-chapter-nav--cta-detached .story-chapter-nav__cta--rail {
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: 22px;
+  min-height: 36px;
+  border-radius: 999px;
 }
 
 .story-chapter-nav__toggle svg,

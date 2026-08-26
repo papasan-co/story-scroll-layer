@@ -104,4 +104,35 @@ describe('StoryChapterNav presentation', () => {
     expect(wrapper.get('[data-story-chapter-cta]').attributes('data-au-track')).toBe('chapter-nav')
     expect(wrapper.get('[data-story-chapter-toggle]').exists()).toBe(true)
   })
+
+  it('applies opt-in chrome colors and detaches the CTA without changing defaults', () => {
+    const wrapper = mount(StoryChapterNav, {
+      props: {
+        chapters: [{ id: 'intro', label: 'Intro', sceneKeys: ['early-ask'] }],
+        activeSceneKey: 'early-ask',
+        brandMode: 'none',
+        backgroundColor: 'rgba(40, 25, 94, 0.7)',
+        textColor: 'rgba(255, 255, 255, 0.65)',
+        activeBackgroundColor: '#714AF9',
+        activeTextColor: '#FFFFFF',
+        borderColor: 'transparent',
+        ctaBackgroundColor: '#714AF9',
+        ctaTextColor: '#FFFFFF',
+        ctaDetached: true,
+        cta: { url: '/join', label: 'Join the mailing list' },
+      },
+      global: {
+        stubs: {
+          Teleport: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    const nav = wrapper.get('[data-story-chapter-nav]')
+    expect(nav.classes()).toContain('story-chapter-nav--cta-detached')
+    expect(nav.attributes('style')).toContain('--story-chapter-nav-bg: rgba(40, 25, 94, 0.7)')
+    expect(nav.attributes('style')).toContain('--story-chapter-nav-active-bg: #714AF9')
+    expect(nav.attributes('style')).toContain('--story-chapter-nav-cta-bg: #714AF9')
+    expect(wrapper.get('[data-story-chapter-cta]').text()).toContain('Join the mailing list')
+  })
 })

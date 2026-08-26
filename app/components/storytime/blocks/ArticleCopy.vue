@@ -190,6 +190,10 @@ function relAttr(action: { action: CtaActionType; target: string }) {
 </template>
 
 <style scoped>
+.ac-cta {
+  border-radius: var(--story-narrative-cta-radius, 0.5rem);
+}
+
 .storytime-copy-block :deep(p) {
   margin: 0;
 }

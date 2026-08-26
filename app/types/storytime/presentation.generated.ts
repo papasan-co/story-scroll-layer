@@ -26,6 +26,7 @@ export interface GeneratedStoryPresentation {
   chapters?: GeneratedStoryChapter[]
   controls?: StoryControlsPresentation
   chapterNav?: StoryChapterNavPresentation
+  narrative?: StoryNarrativePresentation
   scrollHint?: StoryScrollHintPresentation
   scroll?: StoryScrollPresentation
   visualTransitionMode?: StoryVisualTransitionMode
@@ -98,6 +99,15 @@ export interface StoryChapterNavPresentation {
   showToggle?: boolean
   inactiveLabel?: string
   inactiveBehavior?: 'none' | 'first-chapter'
+  sceneKeys?: string[]
+  backgroundColor?: string
+  textColor?: string
+  activeBackgroundColor?: string
+  activeTextColor?: string
+  borderColor?: string
+  ctaBackgroundColor?: string
+  ctaTextColor?: string
+  ctaDetached?: boolean
   brand?: StoryChapterNavBrandPresentation
   cta?: StoryChapterNavCtaPresentation | null
   darkSceneKeys?: string[]
@@ -115,6 +125,10 @@ export interface StoryChapterNavBrandPresentation {
   logoUrl?: string
   mobileLogoUrl?: string
   sceneKeys?: string[]
+  [k: string]: unknown
+}
+export interface StoryNarrativePresentation {
+  ctaBorderRadius?: string
   [k: string]: unknown
 }
 export interface StoryScrollHintPresentation {
