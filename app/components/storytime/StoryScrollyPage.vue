@@ -199,7 +199,16 @@ const chapterNavBrandMode = computed(() => {
   const value = chapterNavPresentation.value.brandMode
   return value === 'text' || value === 'image' || value === 'mark' || value === 'none' ? value : undefined
 })
-const chapterNavCta = computed(() => chapterNavPresentation.value.cta || null)
+const chapterNavCta = computed(() => {
+  const cta = chapterNavPresentation.value.cta
+  if (!cta) return null
+
+  const sceneKeys = Array.isArray(cta.sceneKeys)
+    ? cta.sceneKeys.filter((sceneKey): sceneKey is string => typeof sceneKey === 'string' && sceneKey.length > 0)
+    : []
+
+  return !sceneKeys.length || sceneKeys.includes(activeNavSceneKey.value) ? cta : null
+})
 const chapterNavJumpAlign = computed(() => resolveJumpAlign(chapterNavPresentation.value))
 const chapterNavJumpEndOffsetPx = computed(() => resolveJumpEndOffsetPx(chapterNavPresentation.value))
 const chapterNavJumpTarget = computed(() => {

@@ -55,6 +55,7 @@ export function normalizeChapterNavPresentation(
   const value = { ...(presentation || {}) }
   const legacyWe2 = value.variant === 'we2'
   const brand = value.brand ? { ...value.brand } : undefined
+  const cta = value.cta ? { ...value.cta } : value.cta
   const requestedBrandMode = brand?.mode ?? value.brandMode ?? brand?.variant
 
   value.chromeMode = isChapterNavChromeMode(value.chromeMode)
@@ -81,6 +82,13 @@ export function normalizeChapterNavPresentation(
           : value.brandMode
 
     value.brand = brand
+  }
+
+  if (cta && Array.isArray(cta.sceneKeys)) {
+    cta.sceneKeys = cta.sceneKeys.filter(
+      (sceneKey): sceneKey is string => typeof sceneKey === 'string' && sceneKey.length > 0,
+    )
+    value.cta = cta
   }
 
   return value
