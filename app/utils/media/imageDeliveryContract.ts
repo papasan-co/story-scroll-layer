@@ -242,6 +242,22 @@ export function imageDeliveryPresetFor(scale: ImageScale | undefined, preset: Im
   return 'content'
 }
 
+export function imageDeliveryPresetForMedia(input: {
+  scale?: ImageScale
+  preset?: ImagePreset
+  sizes?: string
+  fit?: ImageFit
+  roles?: string[]
+}): ImageDeliveryPreset {
+  const preset = imageDeliveryPresetFor(input.scale, input.preset)
+  if (preset === 'visual-wall') return preset
+
+  const roles = (input.roles || []).map(role => role.trim().toLowerCase())
+  const explicitlyFullBleed = roles.some(role => role === 'visual-wall' || role === 'full-bleed')
+  const fillsViewport = String(input.sizes || '').trim() === '100vw' && input.fit === 'cover'
+  return explicitlyFullBleed || fillsViewport ? 'visual-wall' : preset
+}
+
 export function imageDeliveryProfile(preset: ImageDeliveryPreset): ImageDeliveryProfile {
   return IMAGE_DELIVERY_PROFILES[preset]
 }
