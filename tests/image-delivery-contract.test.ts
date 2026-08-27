@@ -6,6 +6,7 @@ import {
   decodeAwsImageUrl,
   imageDeliveryCandidateWidths,
   imageDeliveryPresetFor,
+  imageDeliveryPresetForMedia,
 } from '../app/utils/media/imageDeliveryContract'
 
 describe('shared image delivery contract', () => {
@@ -49,5 +50,11 @@ describe('shared image delivery contract', () => {
 
     expect(attrs.format).toBe('jpeg')
     expect(attrs.src).toBe('jpeg')
+  })
+
+  it('classifies resolved viewport-cover media as a visual wall across host boundaries', () => {
+    expect(imageDeliveryPresetForMedia({ preset: 'hero', sizes: '100vw', fit: 'cover' })).toBe('visual-wall')
+    expect(imageDeliveryPresetForMedia({ preset: 'hero', sizes: '100vw', fit: 'contain' })).toBe('hero')
+    expect(imageDeliveryPresetForMedia({ preset: 'inline', roles: ['full-bleed'] })).toBe('visual-wall')
   })
 })
