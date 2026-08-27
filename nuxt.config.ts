@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url'
 
+const imageDeliveryContract = fileURLToPath(new URL('./app/utils/media/imageDeliveryContract.ts', import.meta.url))
+
 /**
  * storytime-layer
  *
@@ -18,9 +20,18 @@ export default defineNuxtConfig({
     '#storytime-iframe-shell': fileURLToPath(
       new URL('./app/utils/storytime/iframeShellStyles.ts', import.meta.url),
     ),
+    '#autumn-image-delivery': imageDeliveryContract,
   },
   
   css: [fileURLToPath(new URL('./app/assets/css/storytime.css', import.meta.url))],
+
+  vite: {
+    resolve: {
+      alias: {
+        '#autumn-image-delivery': imageDeliveryContract,
+      },
+    },
+  },
   
   components: {
     dirs: [
