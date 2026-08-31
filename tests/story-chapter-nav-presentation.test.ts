@@ -115,6 +115,7 @@ describe('StoryChapterNav presentation', () => {
         textColor: 'rgba(255, 255, 255, 0.65)',
         activeBackgroundColor: '#714AF9',
         activeTextColor: '#FFFFFF',
+        fontFamily: 'Manrope, ui-sans-serif, system-ui, sans-serif',
         borderColor: 'transparent',
         ctaBackgroundColor: '#714AF9',
         ctaTextColor: '#FFFFFF',
@@ -133,6 +134,7 @@ describe('StoryChapterNav presentation', () => {
     expect(nav.attributes('style')).toContain('--story-chapter-nav-bg: rgba(40, 25, 94, 0.7)')
     expect(nav.attributes('style')).toContain('--story-chapter-nav-active-bg: #714AF9')
     expect(nav.attributes('style')).toContain('--story-chapter-nav-cta-bg: #714AF9')
+    expect(nav.attributes('style')).toContain('font-family: Manrope, ui-sans-serif, system-ui, sans-serif')
     const detachedCta = wrapper.get('.story-chapter-nav + [data-story-chapter-cta]')
     expect(detachedCta.text()).toContain('Join the mailing list')
     expect(detachedCta.get('svg').attributes('viewBox')).toBe('0 0 16 16')
