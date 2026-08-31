@@ -185,6 +185,7 @@
         "textColor": { "type": "string" },
         "activeBackgroundColor": { "type": "string" },
         "activeTextColor": { "type": "string" },
+        "fontFamily": { "type": "string" },
         "borderColor": { "type": "string" },
         "ctaBackgroundColor": { "type": "string" },
         "ctaTextColor": { "type": "string" },

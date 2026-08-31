@@ -27,6 +27,25 @@ describe('ArticleCopy CTA tracking attributes', () => {
     expect(legacy.find('.ac-pre').text()).toBe('Legacy label')
   })
 
+  it('renders CSS eyebrow colors as styles and preserves legacy utility classes', () => {
+    const cssColor = mount(ArticleCopy, {
+      props: { eyebrow: 'The problem', preColor: '#007c7e' },
+      global: { stubs: globalStubs },
+    })
+    const utilityClass = mount(ArticleCopy, {
+      props: { eyebrow: 'The approach', preColor: 'text-[#004488]' },
+      global: { stubs: globalStubs },
+    })
+
+    expect(cssColor.find('.ac-pre').attributes('style')).toContain('color: #007c7e')
+    expect(cssColor.find('.ac-pre').classes()).not.toContain('#007c7e')
+    expect(cssColor.find('.ac-pre').classes()).toContain(
+      'text-[var(--story-narrative-eyebrow,var(--story-narrative-text))]',
+    )
+    expect(utilityClass.find('.ac-pre').attributes('style')).toBeUndefined()
+    expect(utilityClass.find('.ac-pre').classes()).toContain('text-[#004488]')
+  })
+
   it('ignores removed highlight props instead of adding a second title line', () => {
     const wrapper = mount(ArticleCopy, {
       props: { title: 'One clear idea' },

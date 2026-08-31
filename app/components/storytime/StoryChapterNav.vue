@@ -35,6 +35,7 @@ const props = withDefaults(defineProps<{
   textColor?: string
   activeBackgroundColor?: string
   activeTextColor?: string
+  fontFamily?: string
   borderColor?: string
   ctaBackgroundColor?: string
   ctaTextColor?: string
@@ -56,6 +57,7 @@ const props = withDefaults(defineProps<{
   textColor: '',
   activeBackgroundColor: '',
   activeTextColor: '',
+  fontFamily: '',
   borderColor: '',
   ctaBackgroundColor: '',
   ctaTextColor: '',
@@ -134,6 +136,7 @@ const navStyle = computed<Record<string, string>>(() => {
   if (props.textColor) styles['--story-chapter-nav-text'] = props.textColor
   if (props.activeBackgroundColor) styles['--story-chapter-nav-active-bg'] = props.activeBackgroundColor
   if (props.activeTextColor) styles['--story-chapter-nav-active-text'] = props.activeTextColor
+  if (props.fontFamily) styles.fontFamily = props.fontFamily
   if (props.borderColor) styles['--story-chapter-nav-border'] = props.borderColor
   if (props.ctaBackgroundColor) styles['--story-chapter-nav-cta-bg'] = props.ctaBackgroundColor
   if (props.ctaTextColor) styles['--story-chapter-nav-cta-text'] = props.ctaTextColor

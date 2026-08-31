@@ -53,12 +53,14 @@ describe('story presentation normalization', () => {
       backgroundColor: 'rgba(40, 25, 94, 0.7)',
       activeBackgroundColor: '#714AF9',
       activeTextColor: '#FFFFFF',
+      fontFamily: 'Manrope, ui-sans-serif, system-ui, sans-serif',
       ctaDetached: true,
     })).toMatchObject({
       sceneKeys: ['scene-two', 'scene-three'],
       backgroundColor: 'rgba(40, 25, 94, 0.7)',
       activeBackgroundColor: '#714AF9',
       activeTextColor: '#FFFFFF',
+      fontFamily: 'Manrope, ui-sans-serif, system-ui, sans-serif',
       ctaDetached: true,
     })
   })

@@ -36,6 +36,19 @@ const eyebrow = computed(() => {
   return canonical || legacy
 })
 
+const defaultEyebrowColorClass = 'text-[var(--story-narrative-eyebrow,var(--story-narrative-text))]'
+const eyebrowColor = computed(() => {
+  const value = typeof props.preColor === 'string' ? props.preColor.trim() : ''
+  if (!value) return { className: defaultEyebrowColorClass, style: undefined }
+
+  const utilityTokens = value.split(/\s+/)
+  const usesLegacyUtilityClasses = utilityTokens.every(token => /^(?:[\w-]+:)*!?text-\S+$/.test(token))
+
+  return usesLegacyUtilityClasses
+    ? { className: value, style: undefined }
+    : { className: defaultEyebrowColorClass, style: { color: value } }
+})
+
 const cta = computed(() => {
   if (!props.cta || typeof props.cta !== 'object') return null
   const label = typeof props.cta.label === 'string' ? props.cta.label.trim() : ''
@@ -92,8 +105,9 @@ function relAttr(action: { action: CtaActionType; target: string }) {
       v-if="eyebrow"
       :class="[
         'ac-pre uppercase tracking-widest text-md font-semibold',
-        preColor || 'text-[var(--story-narrative-eyebrow,var(--story-narrative-text))]',
+        eyebrowColor.className,
       ]"
+      :style="eyebrowColor.style"
     >
       {{ eyebrow }}
     </p>
