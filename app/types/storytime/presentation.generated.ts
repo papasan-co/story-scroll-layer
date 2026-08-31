@@ -104,6 +104,7 @@ export interface StoryChapterNavPresentation {
   textColor?: string
   activeBackgroundColor?: string
   activeTextColor?: string
+  fontFamily?: string
   borderColor?: string
   ctaBackgroundColor?: string
   ctaTextColor?: string

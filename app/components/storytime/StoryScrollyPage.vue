@@ -1006,6 +1006,7 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
         :text-color="chapterNavPresentation.textColor"
         :active-background-color="chapterNavPresentation.activeBackgroundColor"
         :active-text-color="chapterNavPresentation.activeTextColor"
+        :font-family="chapterNavPresentation.fontFamily"
         :border-color="chapterNavPresentation.borderColor"
         :cta-background-color="chapterNavPresentation.ctaBackgroundColor"
         :cta-text-color="chapterNavPresentation.ctaTextColor"
