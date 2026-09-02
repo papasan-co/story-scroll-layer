@@ -687,7 +687,9 @@ onBeforeUnmount(() => {
   height: 7px;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: var(--story-chapter-nav-active, var(--story-accent, currentColor));
+  /* the dot marks the active chapter on the collapsed pill — same meaning as
+     the active chip, so it takes the same configured colour first */
+  background: var(--story-chapter-nav-active-bg, var(--story-chapter-nav-active, var(--story-accent, currentColor)));
 }
 
 .story-chapter-nav__current:hover,
