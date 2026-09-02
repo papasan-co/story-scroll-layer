@@ -226,3 +226,49 @@ describe('BottomActionBar tracking attributes', () => {
     expect(stepJumper).toHaveBeenCalledWith(0, 'smooth', -1)
   })
 })
+
+describe('BottomActionBar share routine', () => {
+  it('uses the native share sheet when the platform has one and records the outcome', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+    Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true })
+    const wrapper = mount(BottomActionBar, { props: { activeIndex: 1, total: 3, showShare: true } })
+    await nextTick()
+    const btn = wrapper.get('button[data-story-control="share"]')
+    expect(btn.attributes('aria-label')).toBe('Share')
+    await btn.trigger('click')
+    await nextTick(); await nextTick()
+    expect(share).toHaveBeenCalledTimes(1)
+    expect(btn.attributes('data-au-modifier')).toBe('share-native')
+    expect(wrapper.emitted('share')?.[0]).toEqual(['native'])
+    // @ts-expect-error test cleanup
+    delete navigator.share; // @ts-expect-error test cleanup
+    delete navigator.canShare
+  })
+
+  it('falls back to copying the link when there is no native share', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const wrapper = mount(BottomActionBar, { props: { activeIndex: 1, total: 3, showShare: true } })
+    await nextTick()
+    const btn = wrapper.get('button[data-story-control="share"]')
+    expect(btn.attributes('aria-label')).toBe('Copy link')
+    await btn.trigger('click')
+    await nextTick(); await nextTick()
+    expect(writeText).toHaveBeenCalledWith(window.location.href)
+    expect(btn.attributes('data-au-modifier')).toBe('share-copied')
+    expect(wrapper.text()).toContain('Link copied')
+  })
+
+  it('renders the mobile CTA as a share button when its action is "share"', async () => {
+    const wrapper = mount(BottomActionBar, {
+      props: { activeIndex: 1, total: 3, hideOnMobileBelow: 100000, mobileCta: { action: 'share', label: 'Share', trackLabel: 'share' } },
+    })
+    await nextTick()
+    const btn = wrapper.find('[data-story-mobile-cta-share]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('type')).toBe('button')
+    expect(btn.attributes('data-au-track')).toBe('story-control')
+    expect(wrapper.find('a[data-story-mobile-cta]').exists()).toBe(false)
+  })
+})

@@ -73,6 +73,7 @@ export interface StoryResponsiveJumpAlignRule {
   [k: string]: unknown
 }
 export interface StoryChapterNavCtaPresentation {
+  action?: 'link' | 'share'
   url?: string
   label?: string
   suffix?: string
@@ -261,4 +262,4 @@ export interface StoryProgressRevealParameters {
   easing?: StoryMotionEasing
 }
 
-export const STORY_PRESENTATION_CONTRACT_VERSION = '1.3.0' as const
+export const STORY_PRESENTATION_CONTRACT_VERSION = '1.4.0' as const
