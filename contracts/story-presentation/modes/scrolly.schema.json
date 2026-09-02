@@ -81,6 +81,7 @@
       "title": "StoryChapterNavCtaPresentation",
       "type": "object",
       "properties": {
+        "action": { "enum": ["link", "share"] },
         "url": { "type": "string" },
         "label": { "type": "string" },
         "suffix": { "type": "string" },

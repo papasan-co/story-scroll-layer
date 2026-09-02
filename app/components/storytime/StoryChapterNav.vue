@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { shareStory, type StoryShareOutcome } from '../../composables/storytime/useStoryShare'
 import type {
   StoryChapter,
   StoryChapterNavBrandMode,
@@ -67,6 +68,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   jump: [sceneKeys: string[]]
+  share: [outcome: StoryShareOutcome]
 }>()
 
 const expanded = ref(false)
@@ -102,6 +104,16 @@ const showBrand = computed(() => brandMode.value !== 'none' && Boolean(brandLabe
 const showToggleControl = computed(() => props.showToggle !== false)
 const ctaPresentation = computed<StoryChapterNavCtaPresentation>(() => props.cta || {})
 const ctaUrl = computed(() => typeof ctaPresentation.value.url === 'string' ? ctaPresentation.value.url.trim() : '')
+/** 'share' renders a button that opens the native share sheet (copy-link fallback); anything else is a link */
+const ctaAction = computed(() => ctaPresentation.value.action === 'share' ? 'share' : 'link')
+const ctaRenders = computed(() => ctaAction.value === 'share' || Boolean(ctaUrl.value))
+const ctaShareOutcome = ref<StoryShareOutcome | ''>('')
+async function onCtaShare() {
+  const outcome = await shareStory({ title: typeof document !== 'undefined' ? document.title : undefined })
+  ctaShareOutcome.value = outcome
+  emit('share', outcome)
+  if (outcome === 'copied') window.setTimeout(() => { if (ctaShareOutcome.value === 'copied') ctaShareOutcome.value = '' }, 1300)
+}
 const ctaDownloadFilename = computed(() => {
   const filename = ctaPresentation.value.downloadFilename
   return typeof filename === 'string' && filename.trim() ? filename.trim() : undefined
@@ -411,8 +423,23 @@ onBeforeUnmount(() => {
 
         </div>
 
+        <button
+          v-if="ctaAction === 'share' && !props.ctaDetached"
+          class="story-chapter-nav__cta story-chapter-nav__cta--rail"
+          data-story-chapter-cta
+          data-au-track="chapter-nav"
+          :data-au-label="ctaTrackLabel"
+          :data-au-modifier="ctaShareOutcome ? `share-${ctaShareOutcome}` : 'share'"
+          :aria-label="ctaLabel"
+          type="button"
+          data-story-chapter-cta-share
+          @click="onCtaShare"
+        >
+                    <span class="story-chapter-nav__cta-label">{{ ctaShareOutcome === 'copied' ? 'Link copied' : ctaLabel }}</span>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8M5 5l3-3 3 3M3 9v3.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
         <a
-          v-if="ctaUrl && !props.ctaDetached"
+          v-if="ctaAction === 'link' && ctaUrl && !props.ctaDetached"
           :href="ctaUrl"
           :target="ctaTarget"
           :rel="ctaRel"
@@ -458,8 +485,23 @@ onBeforeUnmount(() => {
           </svg>
         </button>
 
+        <button
+          v-if="ctaAction === 'share'"
+          class="story-chapter-nav__cta story-chapter-nav__cta--icon"
+          data-story-chapter-cta
+          data-au-track="chapter-nav"
+          :data-au-label="ctaTrackLabel"
+          :data-au-modifier="ctaShareOutcome ? `share-${ctaShareOutcome}` : 'share'"
+          :aria-label="ctaLabel"
+          type="button"
+          data-story-chapter-cta-share
+          @click="onCtaShare"
+        >
+                    <span class="story-chapter-nav__cta-label">{{ ctaShareOutcome === 'copied' ? 'Link copied' : ctaLabel }}</span>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8M5 5l3-3 3 3M3 9v3.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
         <a
-          v-if="ctaUrl"
+          v-if="ctaAction === 'link' && ctaUrl"
           :href="ctaUrl"
           :target="ctaTarget"
           :rel="ctaRel"
@@ -483,8 +525,24 @@ onBeforeUnmount(() => {
 
     </nav>
 
+    <button
+      v-if="ctaAction === 'share' && props.ctaDetached"
+      :style="navStyle"
+      class="story-chapter-nav__cta story-chapter-nav__cta--rail story-chapter-nav__cta--detached"
+      data-story-chapter-cta
+      data-au-track="chapter-nav"
+      :data-au-label="ctaTrackLabel"
+      :data-au-modifier="ctaShareOutcome ? `share-${ctaShareOutcome}` : 'share'"
+      :aria-label="ctaLabel"
+      type="button"
+      data-story-chapter-cta-share
+      @click="onCtaShare"
+    >
+            <span class="story-chapter-nav__cta-label">{{ ctaShareOutcome === 'copied' ? 'Link copied' : ctaLabel }}</span>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8M5 5l3-3 3 3M3 9v3.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </button>
     <a
-      v-if="ctaUrl && props.ctaDetached"
+      v-if="ctaAction === 'link' && ctaUrl && props.ctaDetached"
       :href="ctaUrl"
       :target="ctaTarget"
       :rel="ctaRel"

@@ -12,7 +12,8 @@
  * This intentionally avoids partner-specific dependencies while preserving the
  * common remote behavior from the hard-coded story reels.
  */
-import { ref, onMounted, onBeforeUnmount, computed, nextTick, toRaw, unref, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick, toRaw, unref, watch  } from 'vue'
+import { shareStory, supportsNativeShare, type StoryShareOutcome } from '../../../composables/storytime/useStoryShare'
 import type { StoryControlsMode, StoryJumpAlign } from '../../../types/storytime/scenes'
 
 const props = defineProps<{
@@ -102,14 +103,26 @@ function onScroll() {
   })
 }
 
+const emit = defineEmits<{
+  share: [outcome: StoryShareOutcome]
+}>()
 const copied = ref(false)
-async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(window.location.href)
-    copied.value = true
-    window.setTimeout(() => (copied.value = false), 1300)
-  } catch {
-    // ignore
+const lastShare = ref<StoryShareOutcome | ''>('')
+const nativeShare = ref(false)
+onMounted(() => { nativeShare.value = supportsNativeShare() })
+const shareControlLabel = computed(() => (nativeShare.value ? 'Share' : 'Copy link'))
+/** native share sheet where there is one; copy-link otherwise. The toast only shows for a copy. */
+async function copyLink(source: 'control' | 'pill') {
+  const outcome = await shareStory({ title: typeof document !== 'undefined' ? document.title : undefined })
+  lastShare.value = outcome
+  emit('share', outcome)
+  if (outcome === 'copied') {
+    // the pill relabels itself "Link copied"; the toast is for the icon-only control
+    if (source === 'control') {
+      copied.value = true
+      window.setTimeout(() => (copied.value = false), 1300)
+    }
+    window.setTimeout(() => { if (lastShare.value === 'copied') lastShare.value = '' }, 1300)
   }
 }
 
@@ -387,6 +400,8 @@ const progressPercent = computed(() => {
 const showShareControl = computed(() => props.showShare !== false)
 const showProgressControl = computed(() => props.showProgress !== false)
 const mobileCta = computed(() => props.mobileCta || null)
+const mobileCtaAction = computed(() => mobileCta.value?.action === 'share' ? 'share' : 'link')
+const mobileCtaRenders = computed(() => mobileCtaAction.value === 'share' || Boolean(mobileCtaUrl.value))
 const mobileCtaUrl = computed(() => {
   const url = mobileCta.value?.url
   return typeof url === 'string' && url.trim() ? url.trim() : ''
@@ -472,7 +487,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    v-if="!hideForViewport || mobileCtaUrl"
+    v-if="!hideForViewport || mobileCtaRenders"
     class="fixed left-1/2 -translate-x-1/2 z-[1000] transition-all duration-300"
     :class="[visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none']"
     :style="rootStyle"
@@ -490,8 +505,26 @@ onBeforeUnmount(() => {
       Link copied
     </div>
 
+    <button
+      v-if="hideForViewport && mobileCtaAction === 'share'"
+      class="story-controls-mobile-cta"
+      data-story-mobile-cta
+      data-story-control="mobile-cta"
+      data-au-track="story-control"
+      :data-au-label="mobileCtaTrackLabel"
+      :data-au-modifier="lastShare ? `share-${lastShare}` : 'share'"
+      :aria-label="mobileCtaLabel"
+      type="button"
+      data-story-mobile-cta-share
+      @click="copyLink('pill')"
+    >
+      <span>{{ lastShare === 'copied' ? 'Link copied' : mobileCtaLabel }}</span>
+      <span v-if="mobileCtaSuffix" class="story-controls-mobile-cta__suffix" aria-hidden="true">
+        {{ mobileCtaSuffix }}
+      </span>
+    </button>
     <a
-      v-if="hideForViewport && mobileCtaUrl"
+      v-if="hideForViewport && mobileCtaAction === 'link' && mobileCtaUrl"
       :href="mobileCtaUrl"
       :target="mobileCtaTarget"
       :rel="mobileCtaRel"
@@ -622,11 +655,11 @@ onBeforeUnmount(() => {
         v-if="showShareControl"
         class="story-controls-btn p-2 rounded-full transition-colors"
         data-story-control="share"
-        aria-label="Copy link"
+        :aria-label="shareControlLabel"
         data-au-track="story-control"
-        data-au-label="Copy link"
-        data-au-modifier="share"
-        @click="copyLink"
+        :data-au-label="shareControlLabel"
+        :data-au-modifier="lastShare ? `share-${lastShare}` : 'share'"
+        @click="copyLink('control')"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5"><path fill="currentColor" d="M10.59 13.41a1 1 0 0 0 1.41 1.41l4-4a1 1 0 1 0-1.41-1.41l-4 4ZM12.83 5.17a4 4 0 0 1 5.66 5.66l-1.41 1.41a1 1 0 0 1-1.41-1.41l1.41-1.41a2 2 0 0 0-2.83-2.83l-2 2a1 1 0 1 1-1.41-1.41l2-2ZM6.93 11.07a1 1 0 0 1 1.41 1.41l-1.41 1.41A2 2 0 0 0 9.76 17.1l2-2a1 1 0 1 1 1.41 1.41l-2 2a4 4 0 1 1-5.66-5.66l1.42-1.42Z"/></svg>
       </button>
