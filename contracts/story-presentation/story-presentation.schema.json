@@ -26,6 +26,14 @@
     },
     "controls": { "$ref": "modes/scrolly.schema.json#/$defs/controls" },
     "chapterNav": { "$ref": "modes/scrolly.schema.json#/$defs/chapterNav" },
+    "narrative": {
+      "title": "StoryNarrativePresentation",
+      "type": "object",
+      "properties": {
+        "ctaBorderRadius": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "scrollHint": { "$ref": "modes/scrolly.schema.json#/$defs/scrollHint" },
     "scroll": { "$ref": "modes/scrolly.schema.json#/$defs/scroll" },
     "visualTransitionMode": { "$ref": "#/$defs/visualTransitionMode" }

@@ -31,6 +31,15 @@ const props = withDefaults(defineProps<{
   brand?: StoryChapterNavBrandPresentation | null
   cta?: StoryChapterNavCtaPresentation | null
   darkSceneKeys?: string[]
+  backgroundColor?: string
+  textColor?: string
+  activeBackgroundColor?: string
+  activeTextColor?: string
+  fontFamily?: string
+  borderColor?: string
+  ctaBackgroundColor?: string
+  ctaTextColor?: string
+  ctaDetached?: boolean
   disableTeleport?: boolean
 }>(), {
   brandLabel: '',
@@ -44,6 +53,15 @@ const props = withDefaults(defineProps<{
   brand: null,
   cta: null,
   darkSceneKeys: () => [],
+  backgroundColor: '',
+  textColor: '',
+  activeBackgroundColor: '',
+  activeTextColor: '',
+  fontFamily: '',
+  borderColor: '',
+  ctaBackgroundColor: '',
+  ctaTextColor: '',
+  ctaDetached: false,
   disableTeleport: false,
 })
 
@@ -111,6 +129,18 @@ const ctaTrackLabel = computed(() => {
 const ctaTrackModifier = computed(() => {
   const modifier = ctaPresentation.value.trackModifier
   return typeof modifier === 'string' && modifier.trim() ? modifier.trim() : 'cta'
+})
+const navStyle = computed<Record<string, string>>(() => {
+  const styles: Record<string, string> = {}
+  if (props.backgroundColor) styles['--story-chapter-nav-bg'] = props.backgroundColor
+  if (props.textColor) styles['--story-chapter-nav-text'] = props.textColor
+  if (props.activeBackgroundColor) styles['--story-chapter-nav-active-bg'] = props.activeBackgroundColor
+  if (props.activeTextColor) styles['--story-chapter-nav-active-text'] = props.activeTextColor
+  if (props.fontFamily) styles.fontFamily = props.fontFamily
+  if (props.borderColor) styles['--story-chapter-nav-border'] = props.borderColor
+  if (props.ctaBackgroundColor) styles['--story-chapter-nav-cta-bg'] = props.ctaBackgroundColor
+  if (props.ctaTextColor) styles['--story-chapter-nav-cta-text'] = props.ctaTextColor
+  return styles
 })
 
 function chapterSceneKeys(chapter: ChapterLike): string[] {
@@ -251,8 +281,9 @@ onBeforeUnmount(() => {
       :class="[
         `story-chapter-nav--${navChromeMode}`,
         `story-chapter-nav--${sceneTheme}`,
-        { 'is-expanded': expanded },
+        { 'is-expanded': expanded, 'story-chapter-nav--cta-detached': props.ctaDetached },
       ]"
+      :style="navStyle"
       data-story-chapter-nav
       :data-story-chapter-chrome-mode="navChromeMode"
       :data-story-chapter-theme="sceneTheme"
@@ -381,7 +412,7 @@ onBeforeUnmount(() => {
         </div>
 
         <a
-          v-if="ctaUrl"
+          v-if="ctaUrl && !props.ctaDetached"
           :href="ctaUrl"
           :target="ctaTarget"
           :rel="ctaRel"
@@ -393,10 +424,13 @@ onBeforeUnmount(() => {
           :data-au-modifier="ctaTrackModifier"
           :aria-label="ctaAriaLabel"
         >
-          <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <svg v-if="ctaDownloadFilename" width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
             <path d="M9 2v9m0 0L5 7m4 4 4-4M3 14.5h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+          <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </a>
 
         <button
@@ -437,13 +471,40 @@ onBeforeUnmount(() => {
           :data-au-modifier="ctaTrackModifier"
           :aria-label="ctaAriaLabel"
         >
-          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <svg v-if="ctaDownloadFilename" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M6 1v6.5m0 0L3.3 4.8m2.7 2.7 2.7-2.7M1.5 10h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+          <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </a>
       </div>
+
     </nav>
+
+    <a
+      v-if="ctaUrl && props.ctaDetached"
+      :href="ctaUrl"
+      :target="ctaTarget"
+      :rel="ctaRel"
+      :download="ctaDownloadFilename"
+      :style="navStyle"
+      class="story-chapter-nav__cta story-chapter-nav__cta--rail story-chapter-nav__cta--detached"
+      data-story-chapter-cta
+      data-au-track="chapter-nav"
+      :data-au-label="ctaTrackLabel"
+      :data-au-modifier="ctaTrackModifier"
+      :aria-label="ctaAriaLabel"
+    >
+      <svg v-if="ctaDownloadFilename" width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M9 2v9m0 0L5 7m4 4 4-4M3 14.5h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span class="story-chapter-nav__cta-label">{{ ctaLabel }}</span>
+      <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </a>
   </Teleport>
 </template>
 
@@ -579,6 +640,10 @@ onBeforeUnmount(() => {
   background: var(--story-chapter-nav-active-bg, color-mix(in srgb, currentColor 12%, transparent));
 }
 
+.story-chapter-nav__chip.is-active {
+  color: var(--story-chapter-nav-active-text, inherit);
+}
+
 .story-chapter-nav__chip.is-past {
   opacity: 0.72;
 }
@@ -590,6 +655,8 @@ onBeforeUnmount(() => {
 
 .story-chapter-nav__cta {
   padding: 0 12px;
+  color: var(--story-chapter-nav-cta-text, inherit);
+  background: var(--story-chapter-nav-cta-bg, transparent);
 }
 
 .story-chapter-nav__cta--rail {
@@ -598,6 +665,15 @@ onBeforeUnmount(() => {
 
 .story-chapter-nav__cta--icon {
   display: none;
+}
+
+.story-chapter-nav__cta--detached {
+  position: fixed;
+  z-index: 1101;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  min-height: 36px;
+  border-radius: 999px;
 }
 
 .story-chapter-nav__toggle svg,

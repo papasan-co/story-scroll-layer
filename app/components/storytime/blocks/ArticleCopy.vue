@@ -36,6 +36,19 @@ const eyebrow = computed(() => {
   return canonical || legacy
 })
 
+const defaultEyebrowColorClass = 'text-[var(--story-narrative-eyebrow,var(--story-narrative-text))]'
+const eyebrowColor = computed(() => {
+  const value = typeof props.preColor === 'string' ? props.preColor.trim() : ''
+  if (!value) return { className: defaultEyebrowColorClass, style: undefined }
+
+  const utilityTokens = value.split(/\s+/)
+  const usesLegacyUtilityClasses = utilityTokens.every(token => /^(?:[\w-]+:)*!?text-\S+$/.test(token))
+
+  return usesLegacyUtilityClasses
+    ? { className: value, style: undefined }
+    : { className: defaultEyebrowColorClass, style: { color: value } }
+})
+
 const cta = computed(() => {
   if (!props.cta || typeof props.cta !== 'object') return null
   const label = typeof props.cta.label === 'string' ? props.cta.label.trim() : ''
@@ -54,7 +67,7 @@ const cta = computed(() => {
 
 const ctaClasses = computed(() => {
   if (!cta.value) return ''
-  const base = 'self-start inline-flex items-center gap-2 font-bold px-4 py-2 rounded-lg transition [font-family:var(--story-font-body)]'
+  const base = 'ac-cta self-start inline-flex items-center gap-2 font-bold px-4 py-2 rounded-lg transition [font-family:var(--story-font-body)]'
   const primary = 'bg-[var(--article-copy-cta-bg,var(--story-cta-bg))] text-[var(--article-copy-cta-text,var(--story-cta-text))] hover:brightness-105'
   const secondary = 'border border-[var(--article-copy-cta-bg,var(--story-cta-bg))] text-[var(--article-copy-cta-bg,var(--story-cta-bg))] hover:opacity-90'
   const tone = cta.value.tone === 'emphasis' ? 'shadow-lg' : ''
@@ -92,8 +105,9 @@ function relAttr(action: { action: CtaActionType; target: string }) {
       v-if="eyebrow"
       :class="[
         'ac-pre uppercase tracking-widest text-md font-semibold',
-        preColor || 'text-[var(--story-narrative-eyebrow,var(--story-narrative-text))]',
+        eyebrowColor.className,
       ]"
+      :style="eyebrowColor.style"
     >
       {{ eyebrow }}
     </p>
@@ -190,6 +204,10 @@ function relAttr(action: { action: CtaActionType; target: string }) {
 </template>
 
 <style scoped>
+.ac-cta {
+  border-radius: var(--story-narrative-cta-radius, 0.5rem);
+}
+
 .storytime-copy-block :deep(p) {
   margin: 0;
 }

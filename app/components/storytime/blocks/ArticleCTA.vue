@@ -233,6 +233,11 @@ function handleScroll(target: string) {
 </template>
 
 <style scoped>
+.article-cta-root :deep(a),
+.article-cta-root :deep(button) {
+  border-radius: var(--story-narrative-cta-radius, 0.5rem);
+}
+
 .article-cta-root--card-grid {
   width: min(100%, 56rem);
   max-width: 56rem;
