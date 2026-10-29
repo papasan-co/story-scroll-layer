@@ -161,3 +161,42 @@ describe('StoryChapterNav presentation', () => {
     expect(wrapper.get('[data-story-chapter-cta] svg').attributes('viewBox')).toBe('0 0 18 18')
   })
 })
+
+describe('chapter nav CTA share action', () => {
+  it('renders a share button instead of a link when cta.action is "share"', async () => {
+    const { mount } = await import('@vue/test-utils')
+    const StoryChapterNav = (await import('../app/components/storytime/StoryChapterNav.vue')).default
+    const wrapper = mount(StoryChapterNav, {
+      props: {
+        chapters: [{ id: 'a', label: 'A', sceneKeys: ['a'] }],
+        activeSceneKey: 'a',
+        cta: { action: 'share', label: 'Share', trackLabel: 'share', trackModifier: 'share' },
+      },
+      global: { stubs: { Teleport: { template: '<div><slot /></div>' } } },
+    })
+    const shareButtons = wrapper.findAll('[data-story-chapter-cta-share]')
+    expect(shareButtons.length).toBeGreaterThan(0)
+    expect(wrapper.findAll('a[data-story-chapter-cta]').length).toBe(0)
+    const btn = shareButtons[0]
+    expect(btn.attributes('type')).toBe('button')
+    expect(btn.attributes('data-au-track')).toBe('chapter-nav')
+    expect(btn.attributes('data-au-label')).toBe('share')
+    expect(btn.attributes('data-au-modifier')).toBe('share')
+    expect(btn.text()).toContain('Share')
+  })
+
+  it('still renders a link when cta.action is absent', async () => {
+    const { mount } = await import('@vue/test-utils')
+    const StoryChapterNav = (await import('../app/components/storytime/StoryChapterNav.vue')).default
+    const wrapper = mount(StoryChapterNav, {
+      props: {
+        chapters: [{ id: 'a', label: 'A', sceneKeys: ['a'] }],
+        activeSceneKey: 'a',
+        cta: { url: 'https://example.org', label: 'Go' },
+      },
+      global: { stubs: { Teleport: { template: '<div><slot /></div>' } } },
+    })
+    expect(wrapper.findAll('a[data-story-chapter-cta]').length).toBeGreaterThan(0)
+    expect(wrapper.findAll('[data-story-chapter-cta-share]').length).toBe(0)
+  })
+})
