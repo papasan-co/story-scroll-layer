@@ -16,7 +16,8 @@ concurrency:
 
 jobs:
   unit-tests:
-    runs-on: ubuntu-latest
+    # Set CI_USE_GITHUB_RUNNERS=true to use GitHub for new runs.
+    runs-on: ${{ vars.CI_USE_GITHUB_RUNNERS == 'true' && 'ubuntu-latest' || 'ubicloud-standard-2' }}
     timeout-minutes: 15
 
     steps:
