@@ -346,10 +346,14 @@ export function buildResponsiveImageAttrs(input: {
   const maxWidth = imageDeliveryMaxWidth(input.preset)
   const widths = imageDeliveryCandidateWidths(input.preset)
   const urlFor = (width: number) => input.urlFor(width, { fit, format, quality, maxWidth })
+  const { mobile, tablet, desktop } = profile.sizes
+  const sizes = mobile === desktop && tablet === desktop
+    ? desktop
+    : [`${CROP_MEDIA.mobile} ${mobile}`, `${CROP_MEDIA.tablet} ${tablet}`, desktop].join(', ')
   return {
     src: urlFor(widths.at(-1)!),
     srcset: buildImageSrcset(widths, urlFor, maxWidth),
-    sizes: profile.sizes.desktop,
+    sizes,
     fit,
     format,
     quality,
@@ -364,11 +368,13 @@ export function buildArtDirectedSources(input: {
 }): ArtDirectedSource[] {
   const profile = imageDeliveryProfile(input.preset)
   const maxWidth = imageDeliveryMaxWidth(input.preset)
+  // Each crop uses the full preset ladder so a narrow screen can still
+  // choose enough pixels for a high density display.
+  const widths = imageDeliveryCandidateWidths(input.preset)
   return (['mobile', 'tablet', 'desktop'] as const)
     .map((kind): ArtDirectedSource | null => {
       const crop = selectResponsiveCrop(input.crops, kind)
       if (!crop) return null
-      const widths = canonicalizeImageWidths(profile.widths[kind], maxWidth)
       return {
         kind,
         media: CROP_MEDIA[kind],
