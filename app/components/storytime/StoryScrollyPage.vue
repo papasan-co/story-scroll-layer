@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { reactive, computed, ref, shallowRef, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type {
   StoryCardMode,
   StoryChapterNavPresentation,
@@ -20,6 +20,7 @@ import ArticleCTA from './blocks/ArticleCTA.vue'
 import ArticleMediaCaption from './blocks/ArticleMediaCaption.vue'
 import BottomActionBar from './controls/BottomActionBar.client.vue'
 import StoryChapterNav from './StoryChapterNav.vue'
+import StoryNarrationDock from './controls/StoryNarrationDock.vue'
 
 const props = withDefaults(defineProps<{
   scenes: StoryScene[]
@@ -34,6 +35,7 @@ const props = withDefaults(defineProps<{
   /**
    * Use an internal scroll panel for the article column (preview/editor mode).
    */
+  sceneHistory?: boolean
   panelScroll?: boolean
   /**
    * Optional CSS variables resolved by host (story/scene brand theming).
@@ -240,6 +242,11 @@ const chapterNavAriaLabel = computed(() => {
 })
 const controlsPresentation = computed(() => normalizedPresentation.value.controls || {})
 const controlsMode = computed(() => controlsPresentation.value.controlMode || 'default')
+const narrationDock = ref<InstanceType<typeof StoryNarrationDock> | null>(null)
+const animationsPaused = ref(false)
+const narrationAudio = shallowRef<HTMLAudioElement | null>(null)
+const narrationDockHeight = ref(0)
+const narrationSceneIndex = computed(() => Math.max(0, props.scenes.findIndex(scene => scene === activeNavScene.value)))
 const controlsShowShare = computed(() => controlsPresentation.value.showShare !== false)
 const controlsShowProgress = computed(() => controlsPresentation.value.showProgress !== false)
 const controlsShowVideoControls = computed(() => controlsPresentation.value.showVideoControls !== false)
@@ -780,6 +787,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function navigateStep(delta: number, behavior: ScrollBehavior = 'smooth') {
+  // A new dock jump supersedes an in-flight cover animation, including rapid arrow clicks.
+  if (controlsMode.value === 'narration') cancelIntroScrollAnimation()
   if (activeStandaloneIntroScene.value && delta > 0) {
     return scrollFromStandaloneIntro(behavior)
   }
@@ -981,12 +990,63 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
     scheduleActiveSceneProgressUpdate()
   })
 }, { flush: 'post' })
+function jumpToScene(sceneKey: string) {
+    const standaloneIndex = standaloneIntroIndexForSceneKeys([sceneKey])
+    if (standaloneIndex !== -1) return scrollToStandaloneIntro(standaloneIndex, 'auto')
+    const target = resolveChapterTargetIndex([sceneKey])
+    if (target === null) return false
+    cancelIntroScrollAnimation()
+    const direction = target < activeStep.value ? -1 : 1
+    return scrollToStepIndex(target, 'auto', direction, chapterNavJumpAlign.value, chapterNavJumpTarget.value, chapterNavJumpEndOffsetPx.value)
+}
+
+let restoringScene = ''
+let locationReady = false
+function restoreSceneLocation() {
+  if (!props.sceneHistory || controlsMode.value !== 'narration') return
+  if (window.location.hash === '#story-read-listen') {
+    narrationDock.value?.openReader()
+    if (activeNavSceneKey.value) history.replaceState(history.state, '', '#' + encodeURIComponent(activeNavSceneKey.value))
+    return
+  }
+  let key: string
+  try { key = decodeURIComponent(window.location.hash.slice(1)) } catch { return }
+  if (!key || !props.scenes.some(scene => sceneMatchesKeys(scene, [key]))) return
+  restoringScene = key
+  if (!jumpToScene(key) || activeNavSceneKey.value === key) restoringScene = ''
+}
+watch(activeNavSceneKey, key => {
+  if (!locationReady || !props.sceneHistory || controlsMode.value !== 'narration' || !key) return
+  if (restoringScene) {
+    if (restoringScene === key) restoringScene = ''
+    return
+  }
+  const hash = '#' + encodeURIComponent(key)
+  if (location.hash !== hash) history.pushState(history.state, '', hash)
+})
+onMounted(async () => {
+  if (!props.sceneHistory) return
+  await nextTick()
+  restoreSceneLocation()
+  locationReady = true
+  window.addEventListener('hashchange', restoreSceneLocation)
+})
+onBeforeUnmount(() => {
+  locationReady = false
+  window.removeEventListener('hashchange', restoreSceneLocation)
+})
+defineExpose({
+  startNarration: () => narrationDock.value?.play(),
+  pauseNarration: () => narrationDock.value?.pause(),
+  jumpToScene,
+})
 </script>
 
 <template>
   <div
     class="autumn-story-root"
-    :style="rootStyle"
+    :class="{ 'has-narration-dock': controlsMode === 'narration' }"
+    :style="[rootStyle, controlsMode === 'narration' ? { '--story-narration-dock-height': narrationDockHeight + 'px' } : {}]"
   >
     <ClientOnly v-if="showChapterNavForScene">
       <StoryChapterNav
@@ -1051,6 +1111,9 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
         :step="0"
         :scene-progress="standaloneIntroProgress(introIndex)"
         :active="activeStandaloneIntroIndex === introIndex"
+        :reading-mode="false"
+          :paused="animationsPaused"
+        :narration-audio="null"
         :visualRefs="visualRefs"
       />
     </section>
@@ -1081,6 +1144,9 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
           :step="flatSteps[activeStep]?.localStep ?? 0"
           :scene-progress="activeSceneProgress"
           :active="true"
+          :reading-mode="false"
+          :paused="animationsPaused"
+          :narration-audio="narrationAudio"
           :visualRefs="visualRefs"
         />
       </ScrollVisual>
@@ -1133,7 +1199,37 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
       </article>
 
       <ClientOnly v-if="controls">
-        <BottomActionBar
+        <StoryNarrationDock
+          v-if="controlsMode === 'narration'"
+          ref="narrationDock"
+          :narration="controlsPresentation.narration"
+          :scene-keys="[activeNavScene?.sourceKey, activeNavScene?.key, activeNavScene?.id].filter((key): key is string => !!key)"
+          :scene-index="narrationSceneIndex"
+          :total="scenes.length"
+          :can-go-previous="controlsCanGoPrevious"
+          :can-go-next="controlsCanGoNext"
+          :show-share="controlsShowShare"
+          :active-visual="activeVisualRef?.play && activeVisualRef?.pause ? activeVisualRef : { isPlaying: !animationsPaused, play: () => animationsPaused = false, pause: () => animationsPaused = true }"
+          @previous="navigateStep(-1)"
+          @next="navigateStep(1)"
+          @audio-ready="narrationAudio = $event"
+          @height="narrationDockHeight = $event"
+        >
+          <template #reader>
+            <section v-for="(scene, index) in scenes" :key="scene.key" class="narrated-reading-scene">
+              <h3>{{ controlsPresentation.narration?.tracks?.find(track => [scene.key, scene.sourceKey, scene.id].includes(track.sceneKey))?.title || `Scene ${index + 1}` }}</h3>
+              <slot name="visual" :scene="scene" :step="0" :scene-progress="1" :active="true" :visualRefs="{}" :reading-mode="true" :paused="true" :narration-audio="null" />
+              <template v-for="(article, ai) in scene.articles || []" :key="ai">
+                <template v-for="(block, bi) in article.blocks || []" :key="bi">
+                  <component v-if="block.type !== 'html' && block.type !== 'markdown'" :is="(blocks as any)[block.type]" v-bind="block.props" />
+                  <div v-else v-html="block.props?.html" />
+                </template>
+              </template>
+            </section>
+          </template>
+          <template v-if="$slots['narration-options']" #options><slot name="narration-options" /></template>
+        </StoryNarrationDock>
+        <BottomActionBar v-else
           :active-index="controlsActiveIndex"
           :total="flatSteps.length"
           :active-visual="activeVisualRef"
@@ -1164,6 +1260,12 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
 </template>
 
 <style scoped>
+/* Only the opt-in dock reserves viewport space; original controls retain their layout. */
+.has-narration-dock {
+  --story-layout-height: max(16rem, calc(100svh - var(--story-narration-dock-height, 100px)));
+  padding-bottom: var(--story-narration-dock-height, 100px);
+}
+
 .autumn-story-root :deep(h1),
 .autumn-story-root :deep(h2),
 .autumn-story-root :deep(h3),

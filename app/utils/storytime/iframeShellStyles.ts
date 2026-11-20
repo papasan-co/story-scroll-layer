@@ -5,4 +5,6 @@
  */
 export const storytimeIframeShellStylesheets = Object.freeze([
   new URL('../../assets/css/storytime.css', import.meta.url).href,
+  new URL('../../assets/css/story-chapter-nav.css', import.meta.url).href,
+  new URL('../../assets/css/story-narration-dock.css', import.meta.url).href,
 ])
