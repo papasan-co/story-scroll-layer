@@ -95,6 +95,49 @@ describe('optional narration controls', () => {
       )
     }
   })
+  it('opens reading options on the current scene, with the full reader available by choice', async () => {
+    const wrapper = mount(StoryScrollyPage, {
+      attachTo: document.body,
+      props: {
+        scenes: [{ key: 'intro', sourceKey: 'intro', articles: [{ blocks: [] }] }],
+        disableChromeTeleport: true,
+        presentation: {
+          navMode: 'chapter-nav',
+          chapters: [{ id: 'start', label: 'Start', sceneKeys: ['intro'] }],
+          chapterNav: { cta: { url: '#story-narration-options', label: 'Read / listen' } },
+          controls: { controlMode: 'narration', narration: configuration },
+        },
+      },
+      slots: { visual: '<div data-visual-in-reader />' },
+      global: {
+        stubs: {
+          ClientOnly: { template: '<div><slot /></div>' },
+          ScrollVisual: true,
+        },
+      },
+    })
+    wrappers.push(wrapper)
+    const initialHash = location.hash
+    const trigger = wrapper.get('button[data-story-chapter-cta]')
+    expect(trigger.attributes('aria-haspopup')).toBe('dialog')
+    await trigger.trigger('click')
+    await flushPromises()
+    const dialog = wrapper.get('dialog')
+    expect(dialog.attributes('aria-label')).toBe('Reading & accessibility')
+    expect(dialog.text()).toContain('The introduction.')
+    expect(dialog.find('[data-visual-in-reader]').exists()).toBe(false)
+    await dialog.get('button[aria-label="Close accessibility options"]').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(trigger.element)
+    expect(location.hash).toBe(initialHash)
+    await trigger.trigger('click')
+    await flushPromises()
+    const reader = dialog.findAll('button').find((button) => button.text() === 'Read the full story')
+    expect(reader).toBeDefined()
+    await reader!.trigger('click')
+    expect(dialog.attributes('aria-label')).toBe('Read the full story')
+    expect(dialog.find('[data-visual-in-reader]').exists()).toBe(true)
+  })
   it('keeps navigation and a plain-text transcript when audio is missing or unsafe', async () => {
     const wrapper = mount(StoryNarrationDock, {
       props: {

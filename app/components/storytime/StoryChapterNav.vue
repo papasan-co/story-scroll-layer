@@ -31,6 +31,7 @@ const props = withDefaults(defineProps<{
   inactiveBehavior?: 'none' | 'first-chapter'
   brand?: StoryChapterNavBrandPresentation | null
   cta?: StoryChapterNavCtaPresentation | null
+  openCtaDialog?: (event: MouseEvent) => void
   darkSceneKeys?: string[]
   backgroundColor?: string
   textColor?: string
@@ -127,7 +128,7 @@ const ctaAriaLabel = computed(() => {
   const label = ctaPresentation.value.ariaLabel
   return typeof label === 'string' && label.trim()
     ? label.trim()
-    : `${ctaLabel.value}${ctaTarget.value === '_blank' ? ' (opens in new tab)' : ''}`
+    : `${ctaLabel.value}${!props.openCtaDialog && ctaTarget.value === '_blank' ? ' (opens in new tab)' : ''}`
 })
 const ctaRel = computed(() => {
   const rel = ctaPresentation.value.rel
@@ -438,12 +439,16 @@ onBeforeUnmount(() => {
                     <span class="story-chapter-nav__cta-label">{{ ctaShareOutcome === 'copied' ? 'Link copied' : ctaLabel }}</span>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8M5 5l3-3 3 3M3 9v3.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
-        <a
+        <component
           v-if="ctaAction === 'link' && ctaUrl && !props.ctaDetached"
-          :href="ctaUrl"
-          :target="ctaTarget"
-          :rel="ctaRel"
-          :download="ctaDownloadFilename"
+          :is="openCtaDialog ? 'button' : 'a'"
+          :type="openCtaDialog ? 'button' : undefined"
+          :aria-haspopup="openCtaDialog ? 'dialog' : undefined"
+          @click="openCtaDialog?.($event)"
+          :href="openCtaDialog ? undefined : ctaUrl"
+          :target="openCtaDialog ? undefined : ctaTarget"
+          :rel="openCtaDialog ? undefined : ctaRel"
+          :download="openCtaDialog ? undefined : ctaDownloadFilename"
           class="story-chapter-nav__cta story-chapter-nav__cta--rail"
           data-story-chapter-cta
           data-au-track="chapter-nav"
@@ -458,7 +463,7 @@ onBeforeUnmount(() => {
           <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-        </a>
+        </component>
 
         <button
           v-if="showToggleControl"
@@ -500,12 +505,16 @@ onBeforeUnmount(() => {
                     <span class="story-chapter-nav__cta-label">{{ ctaShareOutcome === 'copied' ? 'Link copied' : ctaLabel }}</span>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8M5 5l3-3 3 3M3 9v3.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
-        <a
+        <component
           v-if="ctaAction === 'link' && ctaUrl"
-          :href="ctaUrl"
-          :target="ctaTarget"
-          :rel="ctaRel"
-          :download="ctaDownloadFilename"
+          :is="openCtaDialog ? 'button' : 'a'"
+          :type="openCtaDialog ? 'button' : undefined"
+          :aria-haspopup="openCtaDialog ? 'dialog' : undefined"
+          @click="openCtaDialog?.($event)"
+          :href="openCtaDialog ? undefined : ctaUrl"
+          :target="openCtaDialog ? undefined : ctaTarget"
+          :rel="openCtaDialog ? undefined : ctaRel"
+          :download="openCtaDialog ? undefined : ctaDownloadFilename"
           class="story-chapter-nav__cta story-chapter-nav__cta--icon"
           data-story-chapter-cta
           data-au-track="chapter-nav"
@@ -520,7 +529,7 @@ onBeforeUnmount(() => {
           <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-        </a>
+        </component>
       </div>
 
     </nav>
@@ -541,12 +550,16 @@ onBeforeUnmount(() => {
             <span class="story-chapter-nav__cta-label">{{ ctaShareOutcome === 'copied' ? 'Link copied' : ctaLabel }}</span>
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8M5 5l3-3 3 3M3 9v3.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </button>
-    <a
+    <component
       v-if="ctaAction === 'link' && ctaUrl && props.ctaDetached"
-      :href="ctaUrl"
-      :target="ctaTarget"
-      :rel="ctaRel"
-      :download="ctaDownloadFilename"
+      :is="openCtaDialog ? 'button' : 'a'"
+      :type="openCtaDialog ? 'button' : undefined"
+      :aria-haspopup="openCtaDialog ? 'dialog' : undefined"
+      @click="openCtaDialog?.($event)"
+      :href="openCtaDialog ? undefined : ctaUrl"
+      :target="openCtaDialog ? undefined : ctaTarget"
+      :rel="openCtaDialog ? undefined : ctaRel"
+      :download="openCtaDialog ? undefined : ctaDownloadFilename"
       :style="navStyle"
       class="story-chapter-nav__cta story-chapter-nav__cta--rail story-chapter-nav__cta--detached"
       data-story-chapter-cta
@@ -562,7 +575,7 @@ onBeforeUnmount(() => {
       <svg v-if="!ctaDownloadFilename" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
-    </a>
+    </component>
   </Teleport>
 </template>
 

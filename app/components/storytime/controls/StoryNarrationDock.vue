@@ -55,7 +55,15 @@ const track = computed(() => {
     src,
   }
 })
-const readingAll = ref(false)
+type DialogView = 'transcript' | 'reader' | 'options'
+const dialogView = ref<DialogView>('transcript')
+const readingAll = computed(() => dialogView.value === 'reader')
+const readingOptions = computed(() => dialogView.value === 'options')
+const dialogTitle = computed(() => {
+  if (readingOptions.value) return 'Reading & accessibility'
+  if (readingAll.value) return 'Read the full story'
+  return `Transcript: ${title.value}`
+})
 let opener: HTMLElement | null = null
 const readerButton = ref<HTMLButtonElement | null>(null)
 const title = computed(
@@ -72,19 +80,29 @@ const canControlAnimations = computed(
 const animationsPlaying = computed(() => !!unref(props.activeVisual?.isPlaying))
 const narrationPlayer = useStoryNarration(track)
 const { rate, errorMessage } = narrationPlayer
-function showTranscript(all = false) {
-  opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  readingAll.value = all
+async function openDialog(view: DialogView, trigger?: HTMLElement) {
+  opener = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
+  dialogView.value = view
   narrationPlayer.pause()
+  await nextTick()
   transcript.value?.showModal()
+}
+function readFullStory() {
+  dialogView.value = 'reader'
+  nextTick(() => transcript.value?.querySelector<HTMLButtonElement>('button')?.focus())
+}
+function listenToScene() {
+  closeTranscript()
+  void narrationPlayer.play()
 }
 function closeTranscript() {
   transcript.value?.close()
 }
 async function restoreTranscriptFocus() {
   await nextTick()
-  const trigger = opener || (readingAll.value ? readerButton.value : transcriptButton.value)
-  readingAll.value = false
+  const trigger = opener?.isConnected ? opener : (readingAll.value ? readerButton.value : transcriptButton.value)
+  opener = null
+  dialogView.value = 'transcript'
   trigger?.focus({ preventScroll: true })
 }
 function toggleAnimations() {
@@ -119,7 +137,12 @@ onBeforeUnmount(() => {
   observer?.disconnect()
   emit('height', 0)
 })
-defineExpose({ openReader: () => showTranscript(true), play: narrationPlayer.play, pause: narrationPlayer.pause })
+defineExpose({
+  openReader: () => openDialog('reader'),
+  openOptions: (trigger: HTMLElement) => openDialog('options', trigger),
+  play: narrationPlayer.play,
+  pause: narrationPlayer.pause,
+})
 </script>
 
 <template>
@@ -217,7 +240,7 @@ defineExpose({ openReader: () => showTranscript(true), play: narrationPlayer.pla
           data-au-track="story-control"
           data-au-label="Transcript"
           data-au-modifier="transcript"
-          @click="showTranscript(false)"
+          @click="openDialog('transcript')"
         >
           Transcript
         </button>
@@ -249,7 +272,7 @@ defineExpose({ openReader: () => showTranscript(true), play: narrationPlayer.pla
             >
               {{ animationsPlaying ? 'Pause animations' : 'Resume animations' }}
             </button>
-            <button v-if="narration?.tracks?.length" ref="readerButton" type="button" @click="showTranscript(true)">Read the full story</button>
+            <button v-if="narration?.tracks?.length" ref="readerButton" type="button" @click="openDialog('reader')">Read the full story</button>
             <slot name="options" />
           </div>
         </details>
@@ -259,14 +282,33 @@ defineExpose({ openReader: () => showTranscript(true), play: narrationPlayer.pla
       shareStatus
     }}</span>
     <dialog
+      :aria-label="dialogTitle"
       ref="transcript"
       :class="{ 'story-narration-dock__reader': readingAll }"
       class="story-narration-dock__transcript"
-      :aria-label="readingAll ? 'Read the full story' : `Transcript: ${title}`"
       @close="restoreTranscriptFocus"
       @keydown.stop
     >
-      <template v-if="readingAll">
+      <template v-if="readingOptions">
+        <div class="story-narration-dock__dialog-heading">
+          <h2>Reading &amp; accessibility</h2>
+          <button type="button" aria-label="Close accessibility options" @click="closeTranscript">×</button>
+        </div>
+        <p>Read at your own pace, reduce motion, or listen to this scene.</p>
+        <div class="story-narration-dock__dialog-actions">
+          <button v-if="track?.src" type="button" @click="listenToScene">Listen to this scene</button>
+          <button v-if="narration?.tracks?.length" type="button" @click="readFullStory">Read the full story</button>
+          <button v-if="canControlAnimations" type="button" @click="toggleAnimations">
+            {{ animationsPlaying ? 'Pause animations' : 'Resume animations' }}
+          </button>
+        </div>
+        <p v-if="narration?.voiceLabel">{{ narration.voiceLabel }}</p>
+        <details v-if="track?.transcript" open>
+          <summary>Current narration transcript</summary>
+          <p>{{ track.transcript }}</p>
+        </details>
+      </template>
+      <template v-else-if="readingAll">
         <h2>Read the full story</h2>
         <button type="button" @click="closeTranscript">Return to interactive story</button>
         <slot name="reader">
@@ -276,7 +318,7 @@ defineExpose({ openReader: () => showTranscript(true), play: narrationPlayer.pla
         </slot>
       </template>
       <template v-else><h2>{{ title }}</h2><p>{{ track?.transcript }}</p></template>
-      <button type="button" @click="closeTranscript">Close transcript</button>
+      <button v-if="!readingOptions" type="button" @click="closeTranscript">Close transcript</button>
     </dialog>
   </aside>
 </template>
