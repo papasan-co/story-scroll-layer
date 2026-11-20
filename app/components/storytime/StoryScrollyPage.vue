@@ -1004,6 +1004,11 @@ let restoringScene = ''
 let locationReady = false
 function restoreSceneLocation() {
   if (!props.sceneHistory || controlsMode.value !== 'narration') return
+  if (window.location.hash === '#story-read-listen') {
+    narrationDock.value?.openReader()
+    if (activeNavSceneKey.value) history.replaceState(history.state, '', '#' + encodeURIComponent(activeNavSceneKey.value))
+    return
+  }
   let key: string
   try { key = decodeURIComponent(window.location.hash.slice(1)) } catch { return }
   if (!key || !props.scenes.some(scene => sceneMatchesKeys(scene, [key]))) return
@@ -1106,7 +1111,8 @@ defineExpose({
         :step="0"
         :scene-progress="standaloneIntroProgress(introIndex)"
         :active="activeStandaloneIntroIndex === introIndex"
-        :paused="animationsPaused"
+        :reading-mode="false"
+          :paused="animationsPaused"
         :narration-audio="null"
         :visualRefs="visualRefs"
       />
@@ -1138,6 +1144,7 @@ defineExpose({
           :step="flatSteps[activeStep]?.localStep ?? 0"
           :scene-progress="activeSceneProgress"
           :active="true"
+          :reading-mode="false"
           :paused="animationsPaused"
           :narration-audio="narrationAudio"
           :visualRefs="visualRefs"
@@ -1208,6 +1215,18 @@ defineExpose({
           @audio-ready="narrationAudio = $event"
           @height="narrationDockHeight = $event"
         >
+          <template #reader>
+            <section v-for="(scene, index) in scenes" :key="scene.key" class="narrated-reading-scene">
+              <h3>{{ controlsPresentation.narration?.tracks?.find(track => [scene.key, scene.sourceKey, scene.id].includes(track.sceneKey))?.title || `Scene ${index + 1}` }}</h3>
+              <slot name="visual" :scene="scene" :step="0" :scene-progress="1" :active="true" :visualRefs="{}" :reading-mode="true" :paused="true" :narration-audio="null" />
+              <template v-for="(article, ai) in scene.articles || []" :key="ai">
+                <template v-for="(block, bi) in article.blocks || []" :key="bi">
+                  <component v-if="block.type !== 'html' && block.type !== 'markdown'" :is="(blocks as any)[block.type]" v-bind="block.props" />
+                  <div v-else v-html="block.props?.html" />
+                </template>
+              </template>
+            </section>
+          </template>
           <template v-if="$slots['narration-options']" #options><slot name="narration-options" /></template>
         </StoryNarrationDock>
         <BottomActionBar v-else
