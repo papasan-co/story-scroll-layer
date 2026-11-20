@@ -1,0 +1,259 @@
+.story-chapter-nav {
+  position: fixed;
+  z-index: 1100;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  width: min(calc(100vw - 24px), 1080px);
+  transform: translateX(-50%);
+  color: var(--story-chapter-nav-text, var(--story-visual-text, #111111));
+  pointer-events: none;
+}
+
+.story-chapter-nav__bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 5px;
+  border: 1px solid var(--story-chapter-nav-border, color-mix(in srgb, currentColor 14%, transparent));
+  border-radius: 999px;
+  background: var(--story-chapter-nav-bg, color-mix(in srgb, var(--story-visual-bg, #ffffff) 78%, transparent));
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  pointer-events: auto;
+}
+
+.story-chapter-nav__chapters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.story-chapter-nav__item {
+  position: relative;
+}
+
+.story-chapter-nav__brand,
+.story-chapter-nav__current,
+.story-chapter-nav__chip,
+.story-chapter-nav__cta,
+.story-chapter-nav__toggle,
+.story-chapter-nav__menu-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
+  text-decoration: none;
+}
+
+.story-chapter-nav__brand,
+.story-chapter-nav__current,
+.story-chapter-nav__chip {
+  padding: 0 12px;
+}
+
+.story-chapter-nav__brand {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.story-chapter-nav__brand-image {
+  display: block;
+  width: auto;
+  max-width: 160px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.story-chapter-nav__brand-image--mobile {
+  display: none;
+}
+
+.story-chapter-nav__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #0c0a2e;
+  color: #f5f1e3;
+}
+
+.story-chapter-nav__mark svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+
+.story-chapter-nav__current {
+  max-width: min(48vw, 280px);
+}
+
+.story-chapter-nav__current span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.story-chapter-nav__dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  /* the dot marks the active chapter on the collapsed pill — same meaning as
+     the active chip, so it takes the same configured colour first */
+  background: var(--story-chapter-nav-active-bg, var(--story-chapter-nav-active, var(--story-accent, currentColor)));
+}
+
+.story-chapter-nav__current:hover,
+.story-chapter-nav__toggle:hover,
+.story-chapter-nav__chip:hover,
+.story-chapter-nav__menu-item:hover,
+.story-chapter-nav__chip.is-active {
+  background: var(--story-chapter-nav-active-bg, color-mix(in srgb, currentColor 12%, transparent));
+}
+
+.story-chapter-nav__chip.is-active {
+  color: var(--story-chapter-nav-active-text, inherit);
+}
+
+.story-chapter-nav__chip.is-past {
+  opacity: 0.72;
+}
+
+.story-chapter-nav__toggle {
+  width: 34px;
+  padding: 0;
+}
+
+.story-chapter-nav__cta {
+  padding: 0 12px;
+  color: var(--story-chapter-nav-cta-text, inherit);
+  background: var(--story-chapter-nav-cta-bg, transparent);
+}
+
+.story-chapter-nav__cta--rail {
+  display: inline-flex;
+}
+
+.story-chapter-nav__cta--icon {
+  display: none;
+}
+
+.story-chapter-nav__cta--detached {
+  position: fixed;
+  z-index: 1101;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  min-height: 36px;
+  border-radius: 999px;
+}
+
+.story-chapter-nav__toggle svg,
+.story-chapter-nav__caret {
+  width: 14px;
+  height: 14px;
+}
+
+.story-chapter-nav__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  min-width: 180px;
+  padding: 6px;
+  transform: translateX(-50%);
+  border: 1px solid var(--story-chapter-nav-border, color-mix(in srgb, currentColor 14%, transparent));
+  border-radius: 8px;
+  background: var(--story-chapter-nav-bg, color-mix(in srgb, var(--story-visual-bg, #ffffff) 92%, transparent));
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+}
+
+.story-chapter-nav__menu-item {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.story-chapter-nav__menu-item.is-active {
+  background: var(--story-chapter-nav-active-bg, color-mix(in srgb, currentColor 12%, transparent));
+}
+
+@media (max-width: 1023.98px) {
+  .story-chapter-nav__brand-image--desktop:has(+ .story-chapter-nav__brand-image--mobile) {
+    display: none;
+  }
+
+  .story-chapter-nav__brand-image--mobile {
+    display: block;
+    max-width: 32px;
+    height: 24px;
+  }
+
+  .story-chapter-nav {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    width: min(calc(100vw - 16px), 680px);
+  }
+
+  .story-chapter-nav__bar {
+    width: 100%;
+    justify-content: space-between;
+    border-radius: 8px;
+  }
+
+  .story-chapter-nav__chapters {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 6px;
+    border: 1px solid var(--story-chapter-nav-border, color-mix(in srgb, currentColor 14%, transparent));
+    border-radius: 8px;
+    background: var(--story-chapter-nav-bg, color-mix(in srgb, var(--story-visual-bg, #ffffff) 92%, transparent));
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+  }
+
+  .story-chapter-nav__item,
+  .story-chapter-nav__chapters .story-chapter-nav__chip {
+    width: 100%;
+  }
+
+  .story-chapter-nav__chapters .story-chapter-nav__chip {
+    justify-content: flex-start;
+  }
+
+  .story-chapter-nav__menu {
+    position: static;
+    min-width: 0;
+    margin: 4px 0 6px 16px;
+    transform: none;
+    box-shadow: none;
+  }
+
+}
