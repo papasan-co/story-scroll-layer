@@ -83,13 +83,9 @@ const { rate, errorMessage } = narrationPlayer
 async function openDialog(view: DialogView, trigger?: HTMLElement) {
   opener = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
   dialogView.value = view
-  narrationPlayer.pause()
+  if (view !== 'options') narrationPlayer.pause()
   await nextTick()
   transcript.value?.showModal()
-}
-function readFullStory() {
-  dialogView.value = 'reader'
-  nextTick(() => transcript.value?.querySelector<HTMLButtonElement>('button')?.focus())
 }
 function listenToScene() {
   closeTranscript()
@@ -203,7 +199,7 @@ defineExpose({
         <audio
           v-show="track?.src"
           ref="audio"
-          @ended="track?.advanceOnEnd && canGoNext && navigate('next')"
+          @ended="!readingOptions && track?.advanceOnEnd && canGoNext && navigate('next')"
           controls
           preload="metadata"
           :aria-label="`Narration: ${title}`"
@@ -284,7 +280,10 @@ defineExpose({
     <dialog
       :aria-label="dialogTitle"
       ref="transcript"
-      :class="{ 'story-narration-dock__reader': readingAll }"
+      :class="{
+        'story-narration-dock__reader': readingAll,
+        'story-narration-dock__options-dialog': readingOptions,
+      }"
       class="story-narration-dock__transcript"
       @close="restoreTranscriptFocus"
       @keydown.stop
@@ -297,7 +296,6 @@ defineExpose({
         <p>Read at your own pace, reduce motion, or listen to this scene.</p>
         <div class="story-narration-dock__dialog-actions">
           <button v-if="track?.src" type="button" @click="listenToScene">Listen to this scene</button>
-          <button v-if="narration?.tracks?.length" type="button" @click="readFullStory">Read the full story</button>
           <button v-if="canControlAnimations" type="button" @click="toggleAnimations">
             {{ animationsPlaying ? 'Pause animations' : 'Resume animations' }}
           </button>
@@ -306,6 +304,13 @@ defineExpose({
         <details v-if="track?.transcript" open>
           <summary>Current narration transcript</summary>
           <p>{{ track.transcript }}</p>
+        </details>
+        <details v-if="narration?.tracks?.length">
+          <summary>Complete narration transcript</summary>
+          <section v-for="item in narration.tracks" :key="item.sceneKey">
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.transcript }}</p>
+          </section>
         </details>
       </template>
       <template v-else-if="readingAll">
