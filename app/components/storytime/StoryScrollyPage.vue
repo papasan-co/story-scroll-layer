@@ -243,6 +243,10 @@ const chapterNavAriaLabel = computed(() => {
 const controlsPresentation = computed(() => normalizedPresentation.value.controls || {})
 const controlsMode = computed(() => controlsPresentation.value.controlMode || 'default')
 const narrationDock = ref<InstanceType<typeof StoryNarrationDock> | null>(null)
+const openChapterNarrationOptions = computed(() => {
+  if (!props.controls || controlsMode.value !== 'narration' || chapterNavCta.value?.url !== '#story-narration-options') return undefined
+  return (event: MouseEvent) => narrationDock.value?.openOptions(event.currentTarget as HTMLElement)
+})
 const animationsPaused = ref(false)
 const narrationAudio = shallowRef<HTMLAudioElement | null>(null)
 const narrationDockHeight = ref(0)
@@ -1061,6 +1065,7 @@ defineExpose({
         :brand="chapterNavBrand"
         :brand-mode="chapterNavBrandMode"
         :cta="chapterNavCta"
+        :open-cta-dialog="openChapterNarrationOptions"
         :dark-scene-keys="chapterNavDarkSceneKeys"
         :background-color="chapterNavPresentation.backgroundColor"
         :text-color="chapterNavPresentation.textColor"

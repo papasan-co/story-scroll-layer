@@ -240,3 +240,34 @@
   .story-narration-dock .story-narration-dock__options :is(button,select,summary) {padding:9px 7px;}
 }
 .story-narration-dock__reader { width: min(64rem, calc(100% - 1rem)); background: white; color: #1c1e4d; }
+
+.story-narration-dock__options-dialog {
+  width: min(38rem, calc(100% - 32px));
+  padding: 24px;
+}
+.story-narration-dock__dialog-heading,
+.story-narration-dock__dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.story-narration-dock__dialog-heading {
+  justify-content: space-between;
+}
+.story-narration-dock__dialog-heading button {
+  border: 0;
+  font-size: 24px;
+}
+.story-narration-dock__options-dialog summary {
+  display: list-item;
+  list-style: revert;
+  align-content: center;
+  letter-spacing: normal;
+  font-weight: 600;
+  padding-inline: 0;
+}
+
+.story-narration-dock__options-dialog summary::-webkit-details-marker {
+  display: revert;
+}
