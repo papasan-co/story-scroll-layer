@@ -4,7 +4,7 @@
  */
 
 export type StoryFlowMode = 'scrolly' | 'timed-path'
-export type StoryControlsMode = 'default' | 'minimal' | 'pill' | 'arrows'
+export type StoryControlsMode = 'default' | 'minimal' | 'pill' | 'arrows' | 'narration'
 export type StoryJumpAlign = 'center' | 'start' | 'end'
 export type StoryScrollTarget = 'step' | 'card'
 export type StoryChapterNavChromeMode = 'default' | 'floating-rail'
@@ -43,6 +43,7 @@ export interface GeneratedStoryChapter {
 export interface StoryControlsPresentation {
   variant?: 'default' | 'minimal' | 'we2'
   controlMode?: StoryControlsMode
+  narration?: StoryNarrationPresentation
   keyboard?: boolean
   showShare?: boolean
   showProgress?: boolean
@@ -58,6 +59,30 @@ export interface StoryControlsPresentation {
   jumpTarget?: StoryScrollTarget
   mobileCta?: StoryChapterNavCtaPresentation | null
   reaction?: StoryControlsReactionPresentation | null
+  [k: string]: unknown
+}
+export interface StoryNarrationPresentation {
+  voiceLabel?: string
+  tracks?: StoryNarrationTrack[]
+  [k: string]: unknown
+}
+export interface StoryNarrationTrack {
+  sceneKey: string
+  title?: string
+  src?: string
+  /**
+   * Organization audio media resolved by the rendering host.
+   */
+  recording?: {
+    mediaId?: string
+    s3Key?: string
+    src?: string
+    directUrl?: string
+    url?: string
+    [k: string]: unknown
+  }
+  advanceOnEnd?: boolean
+  transcript?: string
   [k: string]: unknown
 }
 export interface StoryResponsiveNumberRule {
@@ -262,4 +287,4 @@ export interface StoryProgressRevealParameters {
   easing?: StoryMotionEasing
 }
 
-export const STORY_PRESENTATION_CONTRACT_VERSION = '1.4.0' as const
+export const STORY_PRESENTATION_CONTRACT_VERSION = '1.5.0' as const

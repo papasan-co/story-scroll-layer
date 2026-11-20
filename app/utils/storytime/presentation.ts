@@ -26,6 +26,7 @@ const controlsModes: Record<StoryControlsMode, true> = {
   minimal: true,
   pill: true,
   arrows: true,
+  narration: true,
 }
 
 const scrollHintModes: Record<StoryScrollHintMode, true> = {

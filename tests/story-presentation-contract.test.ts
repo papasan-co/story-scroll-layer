@@ -90,6 +90,13 @@ function fixture(name: string): Fixture {
 }
 
 describe('story presentation contract', () => {
+  it('accepts opt-in narration metadata and rejects malformed recording fields', () => {
+    const presentation = { controls: { controlMode: 'narration', narration: { voiceLabel: 'Marin', tracks: [{ sceneKey: 'intro', src: '/intro.mp3', transcript: 'Welcome.' }] } } }
+    expect(validateStory(presentation), JSON.stringify(errors(validateStory))).toBe(true)
+    expect(validateStory({ controls: { controlMode: 'narration', narration: { tracks: [{ sceneKey: 42 }] } } })).toBe(false)
+    expect(errors(validateStory).some(error => error.instancePath.includes('/sceneKey'))).toBe(true)
+  })
+
   it.each(['we2', 'marico'])('%s presentation fixture conforms', name => {
     const value = fixture(name)
 

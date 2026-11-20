@@ -31,6 +31,8 @@ export type {
   StoryChapterNavPresentation,
   StoryControlsMode,
   StoryControlsPresentation,
+  StoryNarrationPresentation,
+  StoryNarrationTrack,
   StoryControlsReactionPresentation,
   StoryFlowMode,
   StoryIntroExitTarget,

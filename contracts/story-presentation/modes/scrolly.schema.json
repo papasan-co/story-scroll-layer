@@ -18,7 +18,7 @@
     },
     "controlsMode": {
       "title": "StoryControlsMode",
-      "enum": ["default", "minimal", "pill", "arrows"]
+      "enum": ["default", "minimal", "pill", "arrows", "narration"]
     },
     "chapterNavChromeMode": {
       "title": "StoryChapterNavChromeMode",
@@ -109,12 +109,47 @@
       },
       "additionalProperties": true
     },
+    "narrationTrack": {
+      "title": "StoryNarrationTrack",
+      "type": "object",
+      "properties": {
+        "sceneKey": { "type": "string" },
+        "title": { "type": "string" },
+        "src": { "type": "string" },
+        "recording": {
+          "type": "object",
+          "description": "Organization audio media resolved by the rendering host.",
+          "properties": {
+            "mediaId": { "type": "string" },
+            "s3Key": { "type": "string" },
+            "src": { "type": "string" },
+            "directUrl": { "type": "string" },
+            "url": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "advanceOnEnd": { "type": "boolean" },
+        "transcript": { "type": "string" }
+      },
+      "required": ["sceneKey"],
+      "additionalProperties": true
+    },
+    "narration": {
+      "title": "StoryNarrationPresentation",
+      "type": "object",
+      "properties": {
+        "voiceLabel": { "type": "string" },
+        "tracks": { "type": "array", "items": { "$ref": "#/$defs/narrationTrack" } }
+      },
+      "additionalProperties": true
+    },
     "controls": {
       "title": "StoryControlsPresentation",
       "type": "object",
       "properties": {
         "variant": { "enum": ["default", "minimal", "we2"] },
         "controlMode": { "$ref": "#/$defs/controlsMode" },
+        "narration": { "$ref": "#/$defs/narration" },
         "keyboard": { "type": "boolean" },
         "showShare": { "type": "boolean" },
         "showProgress": { "type": "boolean" },
