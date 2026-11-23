@@ -221,6 +221,13 @@
     transition: none;
   }
 }
+@media (orientation: landscape) and (max-height:500px) and (min-width:651px) {
+  .story-narration-dock__title strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
 @media (max-width:650px) {
   .story-narration-dock .story-narration-dock__inner {
     grid-template-columns:auto minmax(0,1fr) auto;

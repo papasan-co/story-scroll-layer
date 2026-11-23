@@ -120,12 +120,15 @@ function navigate(direction: 'previous' | 'next') {
   if (direction === 'previous') emit('previous')
   else emit('next')
 }
+function reportHeight() {
+  emit('height', Math.ceil(root.value?.getBoundingClientRect().height || 0))
+}
 onMounted(() => {
   narrationPlayer.attachAudio(audio.value)
   emit('audioReady', audio.value)
-  observer = new ResizeObserver(() =>
-    emit('height', Math.ceil(root.value?.getBoundingClientRect().height || 0)),
-  )
+  // Scene links need the available height before the first resize observation.
+  reportHeight()
+  observer = new ResizeObserver(reportHeight)
   if (root.value) observer.observe(root.value)
 })
 onBeforeUnmount(() => {
@@ -188,7 +191,7 @@ defineExpose({
         <div class="story-narration-dock__title">
           <span
             >{{ String(sceneIndex + 1).padStart(2, '0') }} / {{ total }}</span
-          ><strong>{{ title }}</strong>
+          ><strong :title="title">{{ title }}</strong>
         </div>
       </div>
       <div class="story-narration-dock__audio">
