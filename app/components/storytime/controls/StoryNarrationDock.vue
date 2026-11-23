@@ -191,7 +191,7 @@ defineExpose({
         <div class="story-narration-dock__title">
           <span
             >{{ String(sceneIndex + 1).padStart(2, '0') }} / {{ total }}</span
-          ><strong>{{ title }}</strong>
+          ><strong :title="title">{{ title }}</strong>
         </div>
       </div>
       <div class="story-narration-dock__audio">
