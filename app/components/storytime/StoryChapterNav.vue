@@ -199,6 +199,12 @@ function jumpTo(chapter: ChapterLike) {
   }
 }
 
+function onChapterPointerEnter(event: PointerEvent, chapter: ChapterLike) {
+  if (event.pointerType === 'mouse') {
+    openMenuId.value = chapter.children?.length ? chapter.id : null
+  }
+}
+
 function onChapterClick(chapter: ChapterLike) {
   if (chapter.children?.length) {
     openMenuId.value = openMenuId.value === chapter.id ? null : chapter.id
@@ -373,7 +379,7 @@ onBeforeUnmount(() => {
             class="story-chapter-nav__item"
             data-story-chapter-item-wrapper
             :class="{ 'is-open': openMenuId === chapter.id }"
-            @mouseenter="chapter.children?.length ? (openMenuId = chapter.id) : null"
+            @pointerenter="onChapterPointerEnter($event, chapter)"
           >
             <button
               type="button"

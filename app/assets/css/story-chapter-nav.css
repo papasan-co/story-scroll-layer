@@ -127,11 +127,9 @@
 .story-chapter-nav__toggle:hover,
 .story-chapter-nav__chip:hover,
 .story-chapter-nav__menu-item:hover,
-.story-chapter-nav__chip.is-active {
+.story-chapter-nav__chip.is-active,
+.story-chapter-nav__menu-item.is-active {
   background: var(--story-chapter-nav-active-bg, color-mix(in srgb, currentColor 12%, transparent));
-}
-
-.story-chapter-nav__chip.is-active {
   color: var(--story-chapter-nav-active-text, inherit);
 }
 
@@ -195,8 +193,15 @@
   padding: 0 10px;
 }
 
-.story-chapter-nav__menu-item.is-active {
-  background: var(--story-chapter-nav-active-bg, color-mix(in srgb, currentColor 12%, transparent));
+@media (min-width: 1024px) {
+  /* Keep the dropdown reachable across the gap under its trigger. */
+  .story-chapter-nav__menu::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 100%;
+    height: 9px;
+  }
 }
 
 @media (max-width: 1023.98px) {

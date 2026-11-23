@@ -105,6 +105,34 @@ describe('StoryChapterNav presentation', () => {
     expect(wrapper.get('[data-story-chapter-toggle]').exists()).toBe(true)
   })
 
+  it('opens a chapter on mouse hover and on the first touch tap', async () => {
+    const wrapper = mount(StoryChapterNav, {
+      props: {
+        chapters: [{
+          id: 'training',
+          label: 'Training',
+          children: [{ id: 'skills', label: 'Skills', sceneKeys: ['skills'] }],
+        }],
+        activeSceneKey: 'skills',
+        showToggle: false,
+        disableTeleport: true,
+      },
+    })
+    const chapter = wrapper.get('[data-story-chapter-item-wrapper]')
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+
+    await chapter.trigger('pointerenter', { pointerType: 'touch' })
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    await chapter.get('button').trigger('click')
+    expect(wrapper.get('[role="menu"]').text()).toBe('Skills')
+
+    await chapter.get('[role="menuitem"]').trigger('click')
+    expect(wrapper.emitted('jump')).toEqual([[['skills']]])
+    await chapter.trigger('pointerenter', { pointerType: 'mouse' })
+    expect(wrapper.get('[role="menu"]').text()).toBe('Skills')
+    wrapper.unmount()
+  })
+
   it('applies opt-in chrome colors and detaches the CTA without changing defaults', () => {
     const wrapper = mount(StoryChapterNav, {
       props: {
