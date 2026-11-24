@@ -9,6 +9,16 @@ import type {
 
 const LG_BREAKPOINT = 1024
 
+/**
+ * Which scroll handler drives activation at a given width. They are exact
+ * complements: below 1024px the mobile handler runs, from 1024px up the
+ * desktop one does. (The desktop handler used to require `> 1024`, so at
+ * exactly 1024px — iPad landscape — neither ran and the visual only caught up
+ * on IntersectionObserver threshold crossings, lagging badly when scrolling up.)
+ */
+export const usesMobileScrollActivation = (width: number) => width < LG_BREAKPOINT
+export const usesDesktopScrollActivation = (width: number) => !usesMobileScrollActivation(width)
+
 export function isStepHiddenForViewport(el: HTMLElement, isDesktop = window.innerWidth > LG_BREAKPOINT): boolean {
   if (isDesktop && el.dataset.mobileOnly === 'true') return true
   if (!isDesktop && el.dataset.desktopOnly === 'true') return true
@@ -229,7 +239,7 @@ export function useIoScroller(
       ? Math.max(0, resolved)
       : 24
   }
-  const isMobileSpacingMode = () => window.innerWidth < LG_BREAKPOINT || forceMobileSpacing()
+  const isMobileSpacingMode = () => usesMobileScrollActivation(window.innerWidth) || forceMobileSpacing()
 
   const rootElement = () => options.scrollRoot && 'value' in options.scrollRoot
     ? options.scrollRoot.value
@@ -650,7 +660,7 @@ export function useIoScroller(
   }
 
   const onScrollDesktop = () => {
-    if (!isDesktopViewport()) return
+    if (!usesDesktopScrollActivation(window.innerWidth)) return
     if (programmaticStepIndex !== null && Date.now() < programmaticScrollUntil) return
     if (isPinchZooming()) return
     if (isResizeLocked()) return
