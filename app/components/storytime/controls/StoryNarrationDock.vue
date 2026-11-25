@@ -136,7 +136,8 @@ function finishNarration() {
     playbackMode = null
     narrationPlayer.pause()
   } else if (!optionsOpen && track.value?.advanceOnEnd && props.canGoNext) {
-    navigate('next')
+    const nextSceneKey = props.storySceneKeys?.[props.sceneIndex + 1]?.[0]
+    if (!nextSceneKey || !props.jumpToScene?.(nextSceneKey)) navigate('next')
   }
 }
 function closeTranscript() {

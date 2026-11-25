@@ -191,7 +191,11 @@ describe('optional narration controls', () => {
     await wrapper.setProps({ sceneKeys: ['intro'], sceneIndex: 1 })
     expect(playedSources).toHaveLength(3)
   })
-  it.each(['click', 'ArrowDown'])('advances to the third scene during the cover handoff (%s)', async (gesture) => {
+  it.each([
+    ['story', 'click'],
+    ['story', 'ArrowDown'],
+    ['dock', 'click'],
+  ])('advances to the third scene during the cover handoff (%s, %s)', async (mode, gesture) => {
     vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
     const keys = ['cover', 'intro', 'third']
     const wrapper = mount(StoryScrollyPage, {
@@ -235,8 +239,12 @@ describe('optional narration controls', () => {
       return Promise.resolve()
     })
 
-    await wrapper.getComponent(StoryNarrationDock).vm.$.exposed!.openOptions()
-    await wrapper.get('.story-narration-dock__listen-story').trigger('click')
+    if (mode === 'story') {
+      await wrapper.getComponent(StoryNarrationDock).vm.$.exposed!.openOptions()
+      await wrapper.get('.story-narration-dock__listen-story').trigger('click')
+    } else {
+      await wrapper.get('[aria-label="Play narration"]').trigger('click')
+    }
     expect(audio.attributes('src')).toBe('/cover.mp3')
 
     await audio.trigger('ended')
