@@ -116,7 +116,7 @@
   opacity: 0.4;
   cursor: default;
 }
-.story-narration-dock button:not(:disabled):hover,
+.story-narration-dock button:not(:disabled, .story-narration-dock__listen-story):hover,
 .story-narration-dock summary:hover {
   background: #cbd5e133;
   border-radius: 5px;
@@ -290,20 +290,140 @@
 }
 .story-narration-dock__dialog-heading {
   justify-content: space-between;
+  flex-wrap: nowrap;
 }
 .story-narration-dock__dialog-heading button {
+  flex: 0 0 44px;
+  padding-inline: 0;
   border: 0;
   font-size: 24px;
 }
-.story-narration-dock__options-dialog summary {
-  display: list-item;
-  list-style: revert;
-  align-content: center;
+.story-narration-dock__transcript-panel {
+  margin-top: 10px;
+  border: 1px solid var(--story-controls-divider, #dce1e8);
+  border-radius: 8px;
+}
+.story-narration-dock__transcript-panel > summary {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: inherit;
+  background: color-mix(in srgb, currentColor 5%, transparent);
   letter-spacing: normal;
   font-weight: 600;
-  padding-inline: 0;
+}
+.story-narration-dock__transcript-panel > summary:hover {
+  border-radius: inherit;
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+.story-narration-dock__transcript-panel > summary:focus-visible {
+  outline-offset: -4px;
+}
+.story-narration-dock__transcript-panel > summary::after {
+  content: '';
+  flex: 0 0 8px;
+  height: 8px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(-45deg);
+}
+.story-narration-dock__transcript-panel[open] > summary {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+.story-narration-dock__transcript-panel[open] > summary::after {
+  transform: rotate(45deg);
+}
+.story-narration-dock__transcript-copy {
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--story-controls-divider, #dce1e8);
+}
+.story-narration-dock__transcript-copy p {
+  margin: 0;
+}
+.story-narration-dock__transcript-copy h3 {
+  margin-bottom: 4px;
+  font-weight: 650;
+}
+.story-narration-dock__transcript-copy section + section {
+  margin-top: 16px;
 }
 
-.story-narration-dock__options-dialog summary::-webkit-details-marker {
-  display: revert;
+.story-narration-dock[data-reduced-motion] .story-narration-dock__progress > span {
+  transition: none;
+}
+.story-narration-dock__options-dialog .story-narration-dock__listen-story {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  margin-block: 16px 12px;
+  border-radius: 8px;
+  background: var(--story-controls-text, #1c1e4d);
+  color: var(--story-controls-bg, #fff);
+  font-weight: 700;
+}
+.story-narration-dock__options-dialog .story-narration-dock__listen-story:hover {
+  background-color: color-mix(in srgb, var(--story-controls-text, #1c1e4d) 92%, currentColor);
+}
+.story-narration-dock__options-dialog .story-narration-dock__listen-story:focus-visible {
+  outline-color: var(--story-controls-text, #1c1e4d);
+}
+.story-narration-dock__options-dialog button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+.story-narration-dock__dialog-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.story-narration-dock__motion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.story-narration-dock__motion-toggle input {
+  appearance: none;
+  display: grid;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  padding: 2px;
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  color: inherit;
+  cursor: inherit;
+}
+.story-narration-dock__motion-toggle input::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: currentColor;
+}
+.story-narration-dock__motion-toggle input:checked {
+  background: var(--story-controls-text, #1c1e4d);
+  color: var(--story-controls-bg, #fff);
+  border-color: var(--story-controls-text, #1c1e4d);
+}
+.story-narration-dock__motion-toggle input:checked::before {
+  justify-self: end;
+}
+.story-narration-dock__motion-toggle input:focus-visible {
+  outline: 3px solid var(--story-controls-text, #1c1e4d);
+  outline-offset: 2px;
+}
+.story-narration-dock__motion-toggle input:disabled {
+  cursor: default;
+}
+.story-narration-dock__options-dialog .story-narration-dock__dialog-note {
+  margin-block: 8px;
+  font-size: 13px;
 }

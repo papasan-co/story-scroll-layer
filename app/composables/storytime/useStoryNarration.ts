@@ -20,7 +20,7 @@ export function useStoryNarration(
     }
   }
   async function play() {
-    if (!audio || !track.value?.src || document.visibilityState !== 'visible')
+    if (!audio || !audio.getAttribute('src') || document.visibilityState !== 'visible')
       return
     const currentRequest = ++requestId
     isListening.value = true
@@ -68,21 +68,28 @@ export function useStoryNarration(
     errorMessage.value =
       'This recording could not be loaded. You can read its transcript and continue through the story.'
   }
-  function loadTrack() {
+  function loadSource(src?: string) {
+    if (!audio || (audio.getAttribute('src') ?? undefined) === src)
+      return false
     requestId++
     pauseMedia()
     errorMessage.value = ''
-    if (!audio) return
-    if (!track.value?.src) {
-      audio.removeAttribute('src')
-      audio.load()
-      return
-    }
-    audio.src = track.value.src
+    if (src) audio.src = src
+    else audio.removeAttribute('src')
     audio.defaultPlaybackRate = rate.value
     audio.load()
     audio.playbackRate = rate.value
-    if (isListening.value) void play()
+    return true
+  }
+  function loadTrack() {
+    if (loadSource(track.value?.src) && isListening.value) void play()
+  }
+  function playFromStart(src: string) {
+    if (!audio || document.visibilityState !== 'visible') return
+    // Start on the click so Safari can associate playback with the gesture.
+    loadSource(src)
+    audio.currentTime = 0
+    void play()
   }
   function attachAudio(element: HTMLAudioElement | null) {
     if (audio) {
@@ -126,6 +133,7 @@ export function useStoryNarration(
     errorMessage: readonly(errorMessage),
     isListening: readonly(isListening),
     attachAudio,
+    playFromStart,
     play,
     pause,
   }

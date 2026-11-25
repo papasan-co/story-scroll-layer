@@ -127,6 +127,11 @@ describe('optional narration controls', () => {
     expect(dialog.attributes('aria-label')).toBe('Reading & accessibility')
     expect(dialog.text()).toContain('The introduction.')
     expect(dialog.text()).toContain('Complete narration transcript')
+    const reduceMotion = dialog.get('input[role="switch"]')
+    await reduceMotion.setValue(true)
+    expect(wrapper.get('[data-story-controls]').attributes('data-reduced-motion')).toBe('true')
+    await reduceMotion.setValue(false)
+    expect(wrapper.get('[data-story-controls]').attributes('data-reduced-motion')).toBeUndefined()
     expect(dialog.find('[data-visual-in-reader]').exists()).toBe(false)
     await dialog.get('button[aria-label="Close accessibility options"]').trigger('click')
     await flushPromises()
@@ -138,6 +143,95 @@ describe('optional narration controls', () => {
     await flushPromises()
     expect(dialog.attributes('aria-label')).toBe('Read the full story')
     expect(dialog.find('[data-visual-in-reader]').exists()).toBe(true)
+  })
+  it('starts from the cover during the click and plays through in scene order', async () => {
+    const narration = {
+      tracks: [
+        { sceneKey: 'intro', src: '/intro.mp3' },
+        { sceneKey: 'cover', src: '/cover.mp3' },
+        { sceneKey: 'last', src: '/last.mp3' },
+      ],
+    }
+    const playedSources: (string | null)[] = []
+    vi.mocked(HTMLMediaElement.prototype.play).mockImplementation(function (this: HTMLMediaElement) {
+      playedSources.push(this.getAttribute('src'))
+      return Promise.resolve()
+    })
+    const storySceneKeys = [['cover'], ['intro'], ['last']]
+    const jumpToScene = vi.fn((key: string) => {
+      void wrapper.setProps({ sceneKeys: [key], sceneIndex: storySceneKeys.findIndex(keys => keys.includes(key)) })
+      return true
+    })
+    const wrapper = mount(StoryNarrationDock, {
+      attachTo: document.body,
+      props: {
+        narration,
+        sceneKeys: ['last'],
+        sceneIndex: 2,
+        total: 3,
+        canGoPrevious: true,
+        canGoNext: true,
+        storySceneKeys,
+        jumpToScene,
+      },
+    })
+    wrappers.push(wrapper)
+    await wrapper.vm.$.exposed!.openOptions()
+    wrapper.get('.story-narration-dock__listen-story').element.click()
+    expect(playedSources).toEqual(['/cover.mp3'])
+    await flushPromises()
+    const audio = wrapper.get('audio')
+    await wrapper.vm.$.exposed!.openOptions()
+    await audio.trigger('ended')
+    expect(wrapper.get('dialog').element.open).toBe(true)
+    await audio.trigger('ended')
+    await audio.trigger('ended')
+    expect(jumpToScene.mock.calls).toEqual([['cover'], ['intro'], ['last']])
+    expect(playedSources).toEqual(['/cover.mp3', '/intro.mp3', '/last.mp3'])
+    await wrapper.setProps({ sceneKeys: ['intro'], sceneIndex: 1 })
+    expect(playedSources).toHaveLength(3)
+  })
+  it('leaves audio paused when the reader navigates before the ended event', async () => {
+    const wrapper = mount(StoryNarrationDock, {
+      attachTo: document.body,
+      props: {
+        narration: {
+          tracks: [{ sceneKey: 'cover', src: '/cover.mp3' }, { sceneKey: 'intro', src: '/intro.mp3' }],
+        },
+        sceneKeys: ['cover'],
+        sceneIndex: 0,
+        total: 2,
+        canGoPrevious: false,
+        canGoNext: true,
+        storySceneKeys: [['cover'], ['intro']],
+        jumpToScene: () => true,
+      },
+    })
+    wrappers.push(wrapper)
+    await wrapper.vm.$.exposed!.openOptions()
+    await wrapper.get('.story-narration-dock__listen-story').trigger('click')
+    Object.defineProperty(wrapper.get('audio').element, 'ended', { configurable: true, value: true })
+    await wrapper.setProps({ sceneKeys: ['intro'], sceneIndex: 1 })
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce()
+  })
+  it('plays the current scene without advancing past the end', async () => {
+    const wrapper = mount(StoryNarrationDock, {
+      attachTo: document.body,
+      props: {
+        narration: { tracks: [{ sceneKey: 'cover', src: '/cover.mp3', advanceOnEnd: true }] },
+        sceneKeys: ['cover'],
+        sceneIndex: 0,
+        total: 2,
+        canGoPrevious: false,
+        canGoNext: true,
+      },
+    })
+    wrappers.push(wrapper)
+    await wrapper.vm.$.exposed!.openOptions()
+    await wrapper.get('.story-narration-dock__dialog-actions button').trigger('click')
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce()
+    await wrapper.get('audio').trigger('ended')
+    expect(wrapper.emitted('next')).toBeUndefined()
   })
   it('keeps navigation and a plain-text transcript when audio is missing or unsafe', async () => {
     const wrapper = mount(StoryNarrationDock, {
