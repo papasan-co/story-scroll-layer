@@ -78,9 +78,15 @@
   margin-left: 7px;
   font-weight: 400;
 }
+.story-narration-dock__transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .story-narration-dock audio {
   display: block;
   width: 100%;
+  min-width: 0;
   height: 40px;
 }
 .story-narration-dock__options {
@@ -118,6 +124,29 @@
 .story-narration-dock :is(button, summary, select):focus-visible {
   outline: 3px solid currentColor;
   outline-offset: 2px;
+}
+.story-narration-dock .story-narration-dock__playback,
+.story-narration-dock .story-narration-dock__playback:not(:disabled):hover {
+  display: var(--story-narration-playback-display, none);
+  flex: 0 0 88px;
+  min-height: 48px;
+  padding: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 8px;
+  background: var(--story-controls-text, #1c1e4d);
+  color: var(--story-controls-bg, #fff);
+  font-size: 14px;
+  font-weight: 650;
+}
+.story-narration-dock__playback svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
+.story-narration-dock .story-narration-dock__playback:focus-visible {
+  outline-color: var(--story-controls-text, #1c1e4d);
 }
 .story-narration-dock__more {
   position: relative;

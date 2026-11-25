@@ -33,6 +33,7 @@ const props = withDefaults(
 const emit = defineEmits<{ previous: []; next: []; audioReady: [element: HTMLAudioElement | null]; height: [value: number] }>()
 const root = ref<HTMLElement | null>(null)
 const audio = ref<HTMLAudioElement | null>(null)
+const narrationPlaying = ref(false)
 const transcript = ref<HTMLDialogElement | null>(null)
 const transcriptButton = ref<HTMLButtonElement | null>(null)
 const more = ref<HTMLDetailsElement | null>(null)
@@ -90,6 +91,14 @@ async function openDialog(view: DialogView, trigger?: HTMLElement) {
 function listenToScene() {
   closeTranscript()
   void narrationPlayer.play()
+}
+function toggleNarration() {
+  if (narrationPlaying.value) narrationPlayer.pause()
+  else void narrationPlayer.play()
+}
+function finishNarration() {
+  narrationPlaying.value = false
+  if (!readingOptions.value && track.value?.advanceOnEnd && props.canGoNext) navigate('next')
 }
 function closeTranscript() {
   transcript.value?.close()
@@ -199,17 +208,39 @@ defineExpose({
           Narration
           <span v-if="narration?.voiceLabel">{{ narration.voiceLabel }}</span>
         </div>
-        <audio
-          v-show="track?.src"
-          ref="audio"
-          @ended="!readingOptions && track?.advanceOnEnd && canGoNext && navigate('next')"
-          controls
-          preload="metadata"
-          :aria-label="`Narration: ${title}`"
-          data-au-track="story-control"
-          data-au-label="Narration"
-          data-au-modifier="narration"
-        />
+        <div class="story-narration-dock__transport">
+          <button
+            v-if="track?.src"
+            type="button"
+            class="story-narration-dock__playback"
+            :aria-label="narrationPlaying ? 'Pause narration' : 'Play narration'"
+            data-au-track="story-control"
+            data-au-label="Narration"
+            data-au-modifier="narration"
+            @click="toggleNarration"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path v-if="narrationPlaying" d="M6 4h4v16H6zm8 0h4v16h-4z" />
+              <path v-else d="M7 4l13 8-13 8z" />
+            </svg>
+            {{ narrationPlaying ? 'Pause' : 'Play' }}
+          </button>
+          <audio
+            v-show="track?.src"
+            ref="audio"
+            controls
+            preload="metadata"
+            :aria-label="`Narration: ${title}`"
+            data-au-track="story-control"
+            data-au-label="Narration"
+            data-au-modifier="narration"
+            @play="narrationPlaying = true"
+            @pause="narrationPlaying = false"
+            @emptied="narrationPlaying = false"
+            @error="narrationPlaying = false"
+            @ended="finishNarration"
+          />
+        </div>
         <p v-if="!track?.src" class="story-narration-dock__status">
           No recording for this scene. Continue exploring or read the
           transcript.
