@@ -191,6 +191,59 @@ describe('optional narration controls', () => {
     await wrapper.setProps({ sceneKeys: ['intro'], sceneIndex: 1 })
     expect(playedSources).toHaveLength(3)
   })
+  it.each(['click', 'ArrowDown'])('advances to the third scene during the cover handoff (%s)', async (gesture) => {
+    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
+    const keys = ['cover', 'intro', 'third']
+    const wrapper = mount(StoryScrollyPage, {
+      attachTo: document.body,
+      props: {
+        scenes: keys.map((key): StoryScene => ({
+          key,
+          flow: key === 'cover' ? 'standalone' : undefined,
+          articles: [{ blocks: [] }],
+        })),
+        presentation: {
+          scroll: { introExitTarget: 'scrolly-start', introExitDurationMs: 800 },
+          controls: {
+            controlMode: 'narration',
+            narration: {
+              tracks: keys.map(key => ({ sceneKey: key, src: `/${key}.mp3`, advanceOnEnd: key === 'cover' })),
+            },
+          },
+        },
+      },
+      global: {
+        stubs: { ClientOnly: { template: '<div><slot /></div>' }, ScrollVisual: true },
+      },
+    })
+    wrappers.push(wrapper)
+    for (const step of wrapper.findAll('.step')) {
+      Object.defineProperty(step.element, 'offsetParent', { value: document.body })
+    }
+    vi.spyOn(wrapper.get('.story-standalone-scene').element, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(0, 0, 500, window.innerHeight))
+    const audio = wrapper.get('audio')
+    const down = wrapper.get<HTMLButtonElement>('[aria-label="Next scene"]')
+    const playedSources: (string | null)[] = []
+    vi.mocked(HTMLMediaElement.prototype.play).mockImplementation(function (this: HTMLMediaElement) {
+      const src = this.getAttribute('src')
+      playedSources.push(src)
+      if (src === '/intro.mp3') {
+        if (gesture === 'click') down.element.click()
+        else down.element.dispatchEvent(new KeyboardEvent('keydown', { key: gesture, bubbles: true }))
+      }
+      return Promise.resolve()
+    })
+
+    await wrapper.getComponent(StoryNarrationDock).vm.$.exposed!.openOptions()
+    await wrapper.get('.story-narration-dock__listen-story').trigger('click')
+    expect(audio.attributes('src')).toBe('/cover.mp3')
+
+    await audio.trigger('ended')
+    await flushPromises()
+    expect(playedSources).toEqual(['/cover.mp3', '/intro.mp3', '/third.mp3'])
+    expect(wrapper.get('.story-narration-dock__title').text()).toContain('03 / 3')
+  })
   it('leaves audio paused when the reader navigates before the ended event', async () => {
     const wrapper = mount(StoryNarrationDock, {
       attachTo: document.body,
