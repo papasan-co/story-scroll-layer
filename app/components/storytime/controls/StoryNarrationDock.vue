@@ -397,16 +397,20 @@ defineExpose({
           Your device is set to reduce motion.
         </p>
         <p v-if="narration?.voiceLabel" class="story-narration-dock__dialog-note">{{ narration.voiceLabel }}</p>
-        <details v-if="track?.transcript" open>
+        <details v-if="track?.transcript" class="story-narration-dock__transcript-panel" open>
           <summary>Current narration transcript</summary>
-          <p>{{ track.transcript }}</p>
+          <div class="story-narration-dock__transcript-copy">
+            <p>{{ track.transcript }}</p>
+          </div>
         </details>
-        <details v-if="narration?.tracks?.length">
+        <details v-if="narration?.tracks?.length" class="story-narration-dock__transcript-panel">
           <summary>Complete narration transcript</summary>
-          <section v-for="item in narration.tracks" :key="item.sceneKey">
-            <h3>{{ item.title }}</h3>
-            <p>{{ item.transcript }}</p>
-          </section>
+          <div class="story-narration-dock__transcript-copy">
+            <section v-for="item in narration.tracks" :key="item.sceneKey">
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.transcript }}</p>
+            </section>
+          </div>
         </details>
       </template>
       <template v-else-if="readingAll">
