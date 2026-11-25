@@ -181,13 +181,38 @@ describe('optional narration controls', () => {
     expect(playedSources).toEqual(['/cover.mp3'])
     await flushPromises()
     const audio = wrapper.get('audio')
+    await wrapper.vm.$.exposed!.openOptions()
     await audio.trigger('ended')
+    expect(wrapper.get('dialog').element.open).toBe(true)
     await audio.trigger('ended')
     await audio.trigger('ended')
     expect(jumpToScene.mock.calls).toEqual([['cover'], ['intro'], ['last']])
     expect(playedSources).toEqual(['/cover.mp3', '/intro.mp3', '/last.mp3'])
     await wrapper.setProps({ sceneKeys: ['intro'], sceneIndex: 1 })
     expect(playedSources).toHaveLength(3)
+  })
+  it('leaves audio paused when the reader navigates before the ended event', async () => {
+    const wrapper = mount(StoryNarrationDock, {
+      attachTo: document.body,
+      props: {
+        narration: {
+          tracks: [{ sceneKey: 'cover', src: '/cover.mp3' }, { sceneKey: 'intro', src: '/intro.mp3' }],
+        },
+        sceneKeys: ['cover'],
+        sceneIndex: 0,
+        total: 2,
+        canGoPrevious: false,
+        canGoNext: true,
+        storySceneKeys: [['cover'], ['intro']],
+        jumpToScene: () => true,
+      },
+    })
+    wrappers.push(wrapper)
+    await wrapper.vm.$.exposed!.openOptions()
+    await wrapper.get('.story-narration-dock__listen-story').trigger('click')
+    Object.defineProperty(wrapper.get('audio').element, 'ended', { configurable: true, value: true })
+    await wrapper.setProps({ sceneKeys: ['intro'], sceneIndex: 1 })
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce()
   })
   it('plays the current scene without advancing past the end', async () => {
     const wrapper = mount(StoryNarrationDock, {
