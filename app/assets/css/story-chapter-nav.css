@@ -148,6 +148,17 @@
   background: var(--story-chapter-nav-cta-bg, transparent);
 }
 
+@media (hover: hover) {
+  .story-chapter-nav__cta[aria-haspopup="dialog"]:hover {
+    background-color: color-mix(in srgb, var(--story-chapter-nav-cta-bg, transparent) 90%, currentColor);
+  }
+}
+
+.story-chapter-nav__cta[aria-haspopup="dialog"]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -3px;
+}
+
 .story-chapter-nav__cta--rail {
   display: inline-flex;
 }
@@ -194,6 +205,10 @@
 }
 
 @media (min-width: 1024px) {
+  .story-chapter-nav__cta[aria-haspopup="dialog"] .story-chapter-nav__cta-label {
+    transform: translateY(1px);
+  }
+
   /* Keep the dropdown reachable across the gap under its trigger. */
   .story-chapter-nav__menu::before {
     content: '';
