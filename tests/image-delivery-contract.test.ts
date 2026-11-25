@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildArtDirectedSources,
   buildAwsImageUrl,
   buildResponsiveImageAttrs,
   decodeAwsImageUrl,
@@ -24,6 +25,19 @@ describe('shared image delivery contract', () => {
     expect(attrs.srcset).toContain('2560-90-2560 2560w')
     expect(attrs.sizes).toBe('100vw')
     expect(attrs.fit).toBe('cover')
+  })
+
+  it('uses the same responsive breakpoints for sizing as for crops', () => {
+    const attrs = buildResponsiveImageAttrs({ preset: 'card', urlFor: width => `/sample-${width}.jpg` })
+    expect(attrs.sizes).toBe('(max-width: 639px) 100vw, (min-width: 640px) and (max-width: 1023px) 50vw, 33vw')
+
+    const crop = { x: 0, y: 0, width: 1600, height: 1200 }
+    const sources = buildArtDirectedSources({
+      preset: 'card',
+      crops: { mobile: crop },
+      urlFor: width => `/sample-${width}.jpg`,
+    })
+    expect(sources.find(source => source.kind === 'mobile')?.srcset).toContain('1280w')
   })
 
   it('uses the same deterministic Papasan request envelope for every host', () => {
