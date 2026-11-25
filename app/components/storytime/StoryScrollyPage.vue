@@ -1018,7 +1018,10 @@ function jumpToScene(sceneKey: string) {
   if (target === null) return false
   cancelIntroScrollAnimation()
   const direction = target < activeStep.value ? -1 : 1
-  return scrollToStepIndex(target, 'auto', direction, chapterNavJumpAlign.value, chapterNavJumpTarget.value, chapterNavJumpEndOffsetPx.value)
+  const jumped = scrollToStepIndex(target, 'auto', direction, chapterNavJumpAlign.value, chapterNavJumpTarget.value, chapterNavJumpEndOffsetPx.value)
+  // Use the accepted destination immediately, before scroll geometry catches up.
+  if (jumped) activeStandaloneIntroIndex.value = null
+  return jumped
 }
 
 let restoringScene = ''
