@@ -111,7 +111,8 @@ function listenToScene() {
   void narrationPlayer.play()
 }
 watch(() => props.sceneIndex, () => {
-  if (playbackMode !== 'scene') return
+  const leftEndedTrack = playbackMode === 'story' && audio.value?.ended
+  if (playbackMode !== 'scene' && !leftEndedTrack) return
   playbackMode = null
   narrationPlayer.pause()
 })
@@ -122,12 +123,12 @@ function toggleNarration() {
 function finishNarration() {
   narrationPlaying.value = false
   const optionsOpen = readingOptions.value && transcript.value?.open
-  if (playbackMode === 'story' && !optionsOpen) {
+  if (playbackMode === 'story') {
     const next = props.storySceneKeys?.slice(props.sceneIndex + 1)
       .find(keys => sceneTrack(keys)?.src)
-    if (next?.[0] && props.jumpToScene?.(next[0])) {
-      const nextSrc = sceneTrack(next)?.src
-      if (nextSrc && nextSrc === track.value?.src) narrationPlayer.playFromStart(nextSrc)
+    const nextSrc = next && sceneTrack(next)?.src
+    if (nextSrc && next?.[0] && props.jumpToScene?.(next[0])) {
+      narrationPlayer.playFromStart(nextSrc)
       return
     }
   }
