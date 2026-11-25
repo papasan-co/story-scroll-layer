@@ -6,6 +6,7 @@ import {
   onMounted,
   ref,
   unref,
+  watch,
   type Ref,
 } from 'vue'
 import { useStoryNarration } from '../../../composables/storytime/useStoryNarration'
@@ -27,10 +28,20 @@ const props = withDefaults(
     canGoNext: boolean
     showShare?: boolean
     activeVisual?: AnimationControls | null
+    storySceneKeys?: string[][]
+    jumpToScene?: (key: string) => boolean
+    reducedMotion?: boolean
+    systemReducedMotion?: boolean
   }>(),
   { narration: undefined, showShare: true, activeVisual: null },
 )
-const emit = defineEmits<{ previous: []; next: []; audioReady: [element: HTMLAudioElement | null]; height: [value: number] }>()
+const emit = defineEmits<{
+  previous: []
+  next: []
+  audioReady: [element: HTMLAudioElement | null]
+  height: [value: number]
+  'update:reducedMotion': [value: boolean]
+}>()
 const root = ref<HTMLElement | null>(null)
 const audio = ref<HTMLAudioElement | null>(null)
 const narrationPlaying = ref(false)
@@ -39,23 +50,20 @@ const transcriptButton = ref<HTMLButtonElement | null>(null)
 const more = ref<HTMLDetailsElement | null>(null)
 const shareStatus = ref('')
 let observer: ResizeObserver | undefined
-const selectedTrack = computed(() =>
-  props.narration?.tracks?.find((track) =>
-    props.sceneKeys.includes(track.sceneKey),
-  ),
-)
-const track = computed(() => {
-  if (!selectedTrack.value) return undefined
-  const { recording, src: legacySrc } = selectedTrack.value
+function sceneTrack(keys: string[]) {
+  const selectedTrack = props.narration?.tracks?.find(track => keys.includes(track.sceneKey))
+  if (!selectedTrack) return undefined
+  const { recording, src: legacySrc } = selectedTrack
   const src = [recording?.directUrl, recording?.src, recording?.url, legacySrc]
     .filter((candidate): candidate is string => typeof candidate === 'string')
     .map(candidate => candidate.trim())
     .find(candidate => /^(https?:\/\/|\/(?!\/))/i.test(candidate))
-  return {
-    ...selectedTrack.value,
-    src,
-  }
-})
+  return { ...selectedTrack, src }
+}
+const track = computed(() => sceneTrack(props.sceneKeys))
+const coverTrack = computed(() => sceneTrack(props.storySceneKeys?.[0] ?? []))
+const motionReduced = computed(() => props.reducedMotion || props.systemReducedMotion)
+let playbackMode: 'story' | 'scene' | null = null
 type DialogView = 'transcript' | 'reader' | 'options'
 const dialogView = ref<DialogView>('transcript')
 const readingAll = computed(() => dialogView.value === 'reader')
@@ -88,17 +96,47 @@ async function openDialog(view: DialogView, trigger?: HTMLElement) {
   await nextTick()
   transcript.value?.showModal()
 }
+function listenToStory() {
+  const cover = props.storySceneKeys?.[0]
+  const src = coverTrack.value?.src
+  if (!src || !cover?.[0] || !props.jumpToScene) return
+  closeTranscript()
+  if (!props.jumpToScene(cover[0])) return
+  playbackMode = 'story'
+  narrationPlayer.playFromStart(src)
+}
 function listenToScene() {
+  playbackMode = 'scene'
   closeTranscript()
   void narrationPlayer.play()
 }
+watch(() => props.sceneIndex, () => {
+  if (playbackMode !== 'scene') return
+  playbackMode = null
+  narrationPlayer.pause()
+})
 function toggleNarration() {
   if (narrationPlaying.value) narrationPlayer.pause()
   else void narrationPlayer.play()
 }
 function finishNarration() {
   narrationPlaying.value = false
-  if (!readingOptions.value && track.value?.advanceOnEnd && props.canGoNext) navigate('next')
+  const optionsOpen = readingOptions.value && transcript.value?.open
+  if (playbackMode === 'story' && !optionsOpen) {
+    const next = props.storySceneKeys?.slice(props.sceneIndex + 1)
+      .find(keys => sceneTrack(keys)?.src)
+    if (next?.[0] && props.jumpToScene?.(next[0])) {
+      const nextSrc = sceneTrack(next)?.src
+      if (nextSrc && nextSrc === track.value?.src) narrationPlayer.playFromStart(nextSrc)
+      return
+    }
+  }
+  if (playbackMode) {
+    playbackMode = null
+    narrationPlayer.pause()
+  } else if (!optionsOpen && track.value?.advanceOnEnd && props.canGoNext) {
+    navigate('next')
+  }
 }
 function closeTranscript() {
   transcript.value?.close()
@@ -159,6 +197,7 @@ defineExpose({
     class="story-narration-dock"
     data-story-controls
     data-story-controls-mode="narration"
+    :data-reduced-motion="motionReduced || undefined"
     aria-label="Story narration and navigation"
     @keydown.stop
   >
@@ -327,14 +366,36 @@ defineExpose({
           <h2>Reading &amp; accessibility</h2>
           <button type="button" aria-label="Close accessibility options" @click="closeTranscript">×</button>
         </div>
-        <p>Read at your own pace, reduce motion, or listen to this scene.</p>
+        <button
+          v-if="coverTrack?.src && jumpToScene"
+          type="button"
+          class="story-narration-dock__listen-story"
+          @click="listenToStory"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" /></svg>
+          Listen to this story
+        </button>
         <div class="story-narration-dock__dialog-actions">
-          <button v-if="track?.src" type="button" @click="listenToScene">Listen to this scene</button>
-          <button v-if="canControlAnimations" type="button" @click="toggleAnimations">
-            {{ animationsPlaying ? 'Pause animations' : 'Resume animations' }}
+          <button v-if="track?.src" type="button" @click="listenToScene">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" /></svg>
+            Play this scene
           </button>
+          <label class="story-narration-dock__motion-toggle">
+            <input
+              type="checkbox"
+              role="switch"
+              :checked="motionReduced"
+              :disabled="systemReducedMotion"
+              :aria-describedby="systemReducedMotion ? 'story-system-motion' : undefined"
+              @change="emit('update:reducedMotion', ($event.target as HTMLInputElement).checked)"
+            />
+            Reduce motion
+          </label>
         </div>
-        <p v-if="narration?.voiceLabel">{{ narration.voiceLabel }}</p>
+        <p v-if="systemReducedMotion" id="story-system-motion" class="story-narration-dock__dialog-note">
+          Your device is set to reduce motion.
+        </p>
+        <p v-if="narration?.voiceLabel" class="story-narration-dock__dialog-note">{{ narration.voiceLabel }}</p>
         <details v-if="track?.transcript" open>
           <summary>Current narration transcript</summary>
           <p>{{ track.transcript }}</p>

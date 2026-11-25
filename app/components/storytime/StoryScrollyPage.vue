@@ -248,6 +248,16 @@ const openChapterNarrationOptions = computed(() => {
   return (event: MouseEvent) => narrationDock.value?.openOptions(event.currentTarget as HTMLElement)
 })
 const animationsPaused = ref(false)
+const reduceMotion = ref(false)
+const systemReducedMotion = ref(false)
+const motionReduced = computed(() => reduceMotion.value || systemReducedMotion.value)
+let motionPreference: MediaQueryList | undefined
+function syncMotionPreference() {
+  systemReducedMotion.value = motionPreference?.matches ?? false
+}
+const narrationSceneKeys = computed(() => props.scenes.map(scene =>
+  [scene.sourceKey, scene.key, scene.id].filter((key): key is string => !!key),
+))
 const narrationAudio = shallowRef<HTMLAudioElement | null>(null)
 const narrationDockHeight = ref(0)
 const narrationSceneIndex = computed(() => Math.max(0, props.scenes.findIndex(scene => scene === activeNavScene.value)))
@@ -500,10 +510,6 @@ function clamp01(value: number) {
   return Math.min(1, Math.max(0, value))
 }
 
-function prefersReducedMotion() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 function cancelIntroScrollAnimation() {
   if (introScrollAnimationRaf === null) return
   window.cancelAnimationFrame(introScrollAnimationRaf)
@@ -524,8 +530,8 @@ function animateWindowScrollTo(targetY: number, durationMs: number) {
 
   cancelIntroScrollAnimation()
 
-  if (durationMs <= 0 || prefersReducedMotion()) {
-    window.scrollTo({ top: target, behavior: durationMs > 0 ? 'smooth' : 'auto' })
+  if (durationMs <= 0 || motionReduced.value) {
+    window.scrollTo({ top: target, behavior: 'auto' })
     return true
   }
 
@@ -664,6 +670,7 @@ function standaloneIntroIndexForSceneKeys(sceneKeys: string[]) {
 }
 
 function scrollToStandaloneIntro(index: number, behavior: ScrollBehavior = 'smooth', durationMs = 0) {
+  if (motionReduced.value) behavior = 'auto'
   const el = standaloneIntroSceneRefs[index]
   if (!el) return false
   if (durationMs > 0 && behavior !== 'auto' && !effectivePanelScroll.value) {
@@ -678,7 +685,7 @@ function scrollToStandaloneIntro(index: number, behavior: ScrollBehavior = 'smoo
 function scrollFromStandaloneIntro(behavior: ScrollBehavior = 'smooth') {
   if (introExitTarget.value === 'scrolly-start' && !effectivePanelScroll.value && scrollyRootRef.value) {
     const rect = scrollyRootRef.value.getBoundingClientRect()
-    return animateWindowScrollTo(window.scrollY + rect.top, introExitDurationMs.value)
+    return animateWindowScrollTo(window.scrollY + rect.top, behavior === 'auto' ? 0 : introExitDurationMs.value)
   }
 
   return scrollToStepIndex(
@@ -791,6 +798,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function navigateStep(delta: number, behavior: ScrollBehavior = 'smooth') {
+  if (motionReduced.value) behavior = 'auto'
   // A new dock jump supersedes an in-flight cover animation, including rapid arrow clicks.
   if (controlsMode.value === 'narration') cancelIntroScrollAnimation()
   if (activeStandaloneIntroScene.value && delta > 0) {
@@ -814,6 +822,7 @@ function navigateStep(delta: number, behavior: ScrollBehavior = 'smooth') {
 }
 
 function jumpFromControls(index: number, behavior: ScrollBehavior, direction: number) {
+  if (motionReduced.value) behavior = 'auto'
   if (activeStandaloneIntroScene.value && direction > 0 && index === 0) {
     return scrollFromStandaloneIntro(behavior)
   }
@@ -962,6 +971,9 @@ watch(standaloneIntroSignature, () => {
 }, { flush: 'pre' })
 
 onMounted(() => {
+  motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+  syncMotionPreference()
+  motionPreference?.addEventListener('change', syncMotionPreference)
   updateViewportWidth()
   installViewportVarListeners()
   window.addEventListener('resize', updateViewportWidth, { passive: true })
@@ -975,6 +987,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  motionPreference?.removeEventListener('change', syncMotionPreference)
   window.removeEventListener('resize', updateViewportWidth)
   window.removeEventListener('resize', scheduleActiveSceneProgressUpdate)
   window.removeEventListener('scroll', scheduleActiveSceneProgressUpdate)
@@ -995,13 +1008,17 @@ watch([activeStep, flatSteps, effectivePanelScroll, stepsRootRef], () => {
   })
 }, { flush: 'post' })
 function jumpToScene(sceneKey: string) {
-    const standaloneIndex = standaloneIntroIndexForSceneKeys([sceneKey])
-    if (standaloneIndex !== -1) return scrollToStandaloneIntro(standaloneIndex, 'auto')
-    const target = resolveChapterTargetIndex([sceneKey])
-    if (target === null) return false
-    cancelIntroScrollAnimation()
-    const direction = target < activeStep.value ? -1 : 1
-    return scrollToStepIndex(target, 'auto', direction, chapterNavJumpAlign.value, chapterNavJumpTarget.value, chapterNavJumpEndOffsetPx.value)
+  const standaloneIndex = standaloneIntroIndexForSceneKeys([sceneKey])
+  if (standaloneIndex !== -1) {
+    if (!scrollToStandaloneIntro(standaloneIndex, 'auto')) return false
+    updateStandaloneIntroState()
+    return true
+  }
+  const target = resolveChapterTargetIndex([sceneKey])
+  if (target === null) return false
+  cancelIntroScrollAnimation()
+  const direction = target < activeStep.value ? -1 : 1
+  return scrollToStepIndex(target, 'auto', direction, chapterNavJumpAlign.value, chapterNavJumpTarget.value, chapterNavJumpEndOffsetPx.value)
 }
 
 let restoringScene = ''
@@ -1117,7 +1134,8 @@ defineExpose({
         :scene-progress="standaloneIntroProgress(introIndex)"
         :active="activeStandaloneIntroIndex === introIndex"
         :reading-mode="false"
-          :paused="animationsPaused"
+        :paused="animationsPaused"
+        :reduced-motion="motionReduced"
         :narration-audio="null"
         :visualRefs="visualRefs"
       />
@@ -1136,7 +1154,8 @@ defineExpose({
       <ScrollVisual
         v-if="shouldRenderScrollyVisual"
         :scene-key="activeScene.key"
-        :disable-parallax="activeScene.visual?.disableParallax === true"
+        :disable-parallax="motionReduced || activeScene.visual?.disableParallax === true"
+        :reduced-motion="motionReduced"
         :transition-mode="visualTransitionMode"
         class="shrink-0 min-w-0 bg-[var(--story-visual-bg)] text-[var(--story-visual-text)]"
         :class="isFullLayout ? 'w-full md:z-20' : 'w-full md:w-[60%]'"
@@ -1151,6 +1170,7 @@ defineExpose({
           :active="true"
           :reading-mode="false"
           :paused="animationsPaused"
+          :reduced-motion="motionReduced"
           :narration-audio="narrationAudio"
           :visualRefs="visualRefs"
         />
@@ -1208,7 +1228,11 @@ defineExpose({
           v-if="controlsMode === 'narration'"
           ref="narrationDock"
           :narration="controlsPresentation.narration"
-          :scene-keys="[activeNavScene?.sourceKey, activeNavScene?.key, activeNavScene?.id].filter((key): key is string => !!key)"
+          :scene-keys="narrationSceneKeys[narrationSceneIndex] ?? []"
+          :story-scene-keys="narrationSceneKeys"
+          :jump-to-scene="jumpToScene"
+          v-model:reduced-motion="reduceMotion"
+          :system-reduced-motion="systemReducedMotion"
           :scene-index="narrationSceneIndex"
           :total="scenes.length"
           :can-go-previous="controlsCanGoPrevious"
