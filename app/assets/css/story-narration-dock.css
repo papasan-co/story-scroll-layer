@@ -290,8 +290,11 @@
 }
 .story-narration-dock__dialog-heading {
   justify-content: space-between;
+  flex-wrap: nowrap;
 }
 .story-narration-dock__dialog-heading button {
+  flex: 0 0 44px;
+  padding-inline: 0;
   border: 0;
   font-size: 24px;
 }
@@ -306,4 +309,84 @@
 
 .story-narration-dock__options-dialog summary::-webkit-details-marker {
   display: revert;
+}
+
+.story-narration-dock[data-reduced-motion] .story-narration-dock__progress > span {
+  transition: none;
+}
+.story-narration-dock__options-dialog .story-narration-dock__listen-story,
+.story-narration-dock__options-dialog .story-narration-dock__listen-story:hover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  margin-block: 16px 12px;
+  border-radius: 8px;
+  background: var(--story-controls-text, #1c1e4d);
+  color: var(--story-controls-bg, #fff);
+  font-weight: 700;
+}
+.story-narration-dock__options-dialog .story-narration-dock__listen-story:hover {
+  text-decoration: underline;
+}
+.story-narration-dock__options-dialog .story-narration-dock__listen-story:focus-visible {
+  outline-color: var(--story-controls-text, #1c1e4d);
+}
+.story-narration-dock__options-dialog button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+.story-narration-dock__dialog-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.story-narration-dock__motion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.story-narration-dock__motion-toggle input {
+  appearance: none;
+  display: grid;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  padding: 2px;
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  color: inherit;
+  cursor: inherit;
+}
+.story-narration-dock__motion-toggle input::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: currentColor;
+}
+.story-narration-dock__motion-toggle input:checked {
+  background: var(--story-controls-text, #1c1e4d);
+  color: var(--story-controls-bg, #fff);
+  border-color: var(--story-controls-text, #1c1e4d);
+}
+.story-narration-dock__motion-toggle input:checked::before {
+  justify-self: end;
+}
+.story-narration-dock__motion-toggle input:focus-visible {
+  outline: 3px solid var(--story-controls-text, #1c1e4d);
+  outline-offset: 2px;
+}
+.story-narration-dock__motion-toggle input:disabled {
+  cursor: default;
+}
+.story-narration-dock__options-dialog .story-narration-dock__dialog-note {
+  margin-block: 8px;
+  font-size: 13px;
 }

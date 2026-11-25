@@ -1,6 +1,7 @@
 <template>
   <figure class="story-visual-frame sticky top-0 w-full overflow-hidden flex items-center justify-center">
     <Transition
+      :css="!reducedMotion"
       :name="transitionMode === 'cross-reveal' ? 'cross-reveal' : 'fade'"
       :mode="transitionMode === 'cross-reveal' ? undefined : 'out-in'"
       appear
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 defineProps<{
   sceneKey: string
   disableParallax?: boolean
+  reducedMotion?: boolean
   transitionMode?: 'fade' | 'cross-reveal'
 }>()
 </script>
