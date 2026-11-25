@@ -136,7 +136,8 @@ function finishNarration() {
     playbackMode = null
     narrationPlayer.pause()
   } else if (!optionsOpen && track.value?.advanceOnEnd && props.canGoNext) {
-    navigate('next')
+    const nextSceneKey = props.storySceneKeys?.[props.sceneIndex + 1]?.[0]
+    if (!nextSceneKey || !props.jumpToScene?.(nextSceneKey)) navigate('next')
   }
 }
 function closeTranscript() {
@@ -167,6 +168,11 @@ async function share() {
 function navigate(direction: 'previous' | 'next') {
   if (direction === 'previous') emit('previous')
   else emit('next')
+}
+function onDockKeydown(event: KeyboardEvent) {
+  if (!(event.target instanceof Element) || !event.target.closest('.story-narration-dock__arrows')) {
+    event.stopPropagation()
+  }
 }
 function reportHeight() {
   emit('height', Math.ceil(root.value?.getBoundingClientRect().height || 0))
@@ -200,7 +206,7 @@ defineExpose({
     data-story-controls-mode="narration"
     :data-reduced-motion="motionReduced || undefined"
     aria-label="Story narration and navigation"
-    @keydown.stop
+    @keydown="onDockKeydown"
   >
     <div class="story-narration-dock__progress" aria-hidden="true">
       <span :style="{ width: progress + '%' }" />
