@@ -160,10 +160,38 @@ describe('optional narration controls', () => {
     })
     wrappers.push(wrapper)
     expect(wrapper.find('audio').attributes('src')).toBeUndefined()
+    expect(wrapper.find('[aria-label="Play narration"]').exists()).toBe(false)
     await wrapper.get('[aria-label="Next scene"]').trigger('click')
     expect(wrapper.emitted('next')).toHaveLength(1)
     expect(wrapper.find('script').exists()).toBe(false)
     expect(wrapper.text()).toContain('<script>not markup</script>')
+  })
+  it('keeps the playback button in sync with the native recording', async () => {
+    const wrapper = mount(StoryNarrationDock, {
+      props: {
+        narration: configuration,
+        sceneKeys: ['intro'],
+        sceneIndex: 0,
+        total: 2,
+        canGoPrevious: false,
+        canGoNext: true,
+      },
+    })
+    wrappers.push(wrapper)
+    const audio = wrapper.get('audio')
+    await wrapper.get('[aria-label="Play narration"]').trigger('click')
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce()
+
+    Object.defineProperty(audio.element, 'paused', { configurable: true, value: false })
+    await audio.trigger('play')
+    await wrapper.get('[aria-label="Pause narration"]').trigger('click')
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledOnce()
+
+    await audio.trigger('pause')
+    expect(wrapper.find('[aria-label="Play narration"]').exists()).toBe(true)
+    await audio.trigger('play')
+    await audio.trigger('ended')
+    expect(wrapper.find('[aria-label="Play narration"]').exists()).toBe(true)
   })
   it('does not let a stale play promise restart audio after the reader pauses', async () => {
     let complete: (() => void) | undefined
