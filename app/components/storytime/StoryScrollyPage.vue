@@ -1067,6 +1067,7 @@ defineExpose({
   <div
     class="autumn-story-root"
     :class="{ 'has-narration-dock': controlsMode === 'narration' }"
+    :data-story-reduced-motion="motionReduced || undefined"
     :style="[rootStyle, controlsMode === 'narration' ? { '--story-narration-dock-height': narrationDockHeight + 'px' } : {}]"
   >
     <ClientOnly v-if="showChapterNavForScene">
@@ -1370,6 +1371,13 @@ defineExpose({
   border-radius: 2px;
   background: currentColor;
   animation: storyWe2CueWheel 1.2s ease-in-out infinite;
+}
+
+[data-story-reduced-motion] :is(.story-scroll-hint--corner, .story-scroll-hint__wheel) {
+  animation: none;
+}
+[data-story-reduced-motion] .storytime-article-column {
+  transition: none;
 }
 
 .story-scroll-hint__label {
