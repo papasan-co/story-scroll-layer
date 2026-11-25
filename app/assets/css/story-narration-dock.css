@@ -116,7 +116,7 @@
   opacity: 0.4;
   cursor: default;
 }
-.story-narration-dock button:not(:disabled):hover,
+.story-narration-dock button:not(:disabled, .story-narration-dock__listen-story):hover,
 .story-narration-dock summary:hover {
   background: #cbd5e133;
   border-radius: 5px;
@@ -314,8 +314,7 @@
 .story-narration-dock[data-reduced-motion] .story-narration-dock__progress > span {
   transition: none;
 }
-.story-narration-dock__options-dialog .story-narration-dock__listen-story,
-.story-narration-dock__options-dialog .story-narration-dock__listen-story:hover {
+.story-narration-dock__options-dialog .story-narration-dock__listen-story {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -329,7 +328,7 @@
   font-weight: 700;
 }
 .story-narration-dock__options-dialog .story-narration-dock__listen-story:hover {
-  text-decoration: underline;
+  background-color: color-mix(in srgb, var(--story-controls-text, #1c1e4d) 92%, currentColor);
 }
 .story-narration-dock__options-dialog .story-narration-dock__listen-story:focus-visible {
   outline-color: var(--story-controls-text, #1c1e4d);
